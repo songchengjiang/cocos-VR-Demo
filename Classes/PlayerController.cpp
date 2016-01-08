@@ -8,6 +8,7 @@ USING_NS_CC;
 #define CANNON_GUN_ROTATE_SPEED   10.0f
 #define TANK_MOVE_FORCE           3.0f
 #define TANK_TURN_TORQUE          45.0f
+#define TANK_BULLET_SPEED         10.0f
 
 
 PlayerController::PlayerController()
@@ -85,7 +86,7 @@ void PlayerController::update(float delta)
 		_player->rotateCannonGun(-delta * CANNON_GUN_ROTATE_SPEED);
 	}
 	else if (_cannonState == CannonState::SHOT) {
-		_player->shot();
+		_player->shot(TANK_BULLET_SPEED);
 	}
 
 	if (_moveState == PlayerMoveState::TURN_LEFT) {

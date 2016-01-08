@@ -70,8 +70,8 @@ bool HelloWorld::init()
 
 	//{
 	//	auto camera = Camera::createPerspective(30.0f, visibleSize.width / visibleSize.height, 1.0f, 5000.0f);
-	//	camera->setPosition3D(Vec3(20.0f, -30.0f, 0.0f));
-	//	camera->lookAt(Vec3(0.0f, -50.0f, 0.0f));
+	//	camera->setPosition3D(Vec3(10.0f, -50.0f, -3.0f));
+	//	camera->lookAt(Vec3(0.0f, -50.0f, -3.0f));
 	//	camera->setCameraFlag(CameraFlag::USER1);
 	//	this->addChild(camera);
 	//	this->setPhysics3DDebugCamera(camera);
@@ -180,7 +180,7 @@ bool HelloWorld::init()
 	std::vector<float> heidata = terrain->getHeightData();
 	auto size = terrain->getTerrainSize();
 	Physics3DColliderDes colliderDes;
-	colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, terrain->getMinHeight(), terrain->getMaxHeight(), true, false, true);
+	colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
 	auto collider = Physics3DCollider::create(&colliderDes);
 	auto component = Physics3DComponent::create(collider);
 	terrain->addComponent(component);

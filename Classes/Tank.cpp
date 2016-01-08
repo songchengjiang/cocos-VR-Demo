@@ -35,9 +35,10 @@ bool Tank::init()
 	return true;
 }
 
-void Tank::shot()
+void Tank::shot(float speed)
 {
-	_gunfire->startParticleSystem();
+	shotBullet(speed);
+	//_gunfire->startParticleSystem();
 }
 
 void Tank::rotateCannonStage(float angle)
@@ -49,8 +50,8 @@ void Tank::rotateCannonStage(float angle)
 void Tank::rotateCannonGun(float angle)
 {
 	_cannonGunAngle += angle;
-	if (20.0f < _cannonGunAngle) _cannonGunAngle = 20.0f;
-	if (_cannonGunAngle < 0.0f) _cannonGunAngle = 0.0f;
+	if (10.0f < _cannonGunAngle) _cannonGunAngle = 10.0f;
+	if (_cannonGunAngle < -5.0f) _cannonGunAngle = -5.0f;
 	auto gun = _cannon->getChildByName("gun");
 	gun->setRotation3D(Vec3(-_cannonGunAngle, 0.0f, 0.0f));
 }
@@ -72,4 +73,36 @@ void Tank::turnRight(float torque)
 {
 	auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-torque));
 	this->setRotationQuat(this->getRotationQuat() * rot);
+}
+
+void Tank::shotBullet(float speed)
+{
+	Mat4 bulletWorldMat = _cannon->getChildByName("gun")->getChildByName("gunfire")->getNodeToWorldTransform();
+	Vec3 bulletPos;
+	Quaternion bulletRot;
+	bulletWorldMat.decompose(nullptr, &bulletRot, &bulletPos);
+
+	Physics3DRigidBodyDes rbDes;
+	rbDes.mass = 100.f;
+	rbDes.shape = Physics3DShape::createCapsule(0.04f, 0.3f);
+	auto bullet = PhysicsSprite3D::create("models/bullet.c3b", &rbDes);
+	Director::getInstance()->getRunningScene()->addChild(bullet);
+
+	Vec3 linearVel = Vec3(-cos(CC_DEGREES_TO_RADIANS(_cannonGunAngle)) * sin(CC_DEGREES_TO_RADIANS(_cannonStageAngle))
+		, sin(CC_DEGREES_TO_RADIANS(_cannonGunAngle))
+		, cos(CC_DEGREES_TO_RADIANS(_cannonGunAngle)) * cos(CC_DEGREES_TO_RADIANS(_cannonStageAngle)));
+
+	auto rigidBody = static_cast<Physics3DRigidBody*>(bullet->getPhysicsObj());
+	rigidBody->setLinearFactor(Vec3::ONE);
+	rigidBody->setLinearVelocity(linearVel * speed);
+	rigidBody->setAngularVelocity(Vec3::ZERO);
+	rigidBody->setCcdMotionThreshold(0.5f);
+	rigidBody->setCcdSweptSphereRadius(0.4f);
+
+
+	bullet->setCameraMask(this->getCameraMask());
+	bullet->setPosition3D(bulletPos);
+	bullet->setRotation3D(Vec3(_cannonGunAngle - 85.0f, _cannonStageAngle, 0.0f));
+	bullet->syncNodeToPhysics();
+	bullet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
 }

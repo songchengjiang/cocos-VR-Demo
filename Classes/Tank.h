@@ -16,7 +16,7 @@ public:
 	void move(float force);
 	void turnLeft(float torque);
 	void turnRight(float torque);
-	void shot();
+	void shot(float speed);
 	void rotateCannonStage(float angle);
 	void rotateCannonGun(float angle);
 
@@ -26,6 +26,7 @@ public:
 private:
 
 	Tank();
+	void shotBullet(float speed);
 
 private:
 
