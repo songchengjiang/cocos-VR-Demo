@@ -156,7 +156,7 @@ struct TextureBuffer
 
 		glViewport(0, 0, texSize.w, texSize.h);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glEnable(GL_FRAMEBUFFER_SRGB);
+		//glEnable(GL_FRAMEBUFFER_SRGB);
 	}
 
 	void UnsetRenderSurface()
@@ -171,7 +171,7 @@ struct TextureBuffer
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fboId);
 		glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex->OGL.TexId, 0);
 		//glViewport(0, 0, texSize.w, texSize.h);
-		//glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 		//glEnable(GL_FRAMEBUFFER_SRGB);
 
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
@@ -191,11 +191,14 @@ public:
 
 	virtual void update(float delta) override;
 	virtual void draw(cocos2d::Renderer *renderer, const cocos2d::Mat4& transform, uint32_t flags) override;
+	void setOffsetPos(const cocos2d::Vec3 &pos);
+	void setOffsetRot(const cocos2d::Quaternion &rot);
 
 private:
 
 	bool init(cocos2d::CameraFlag flag);
-	void onDraw();
+	void onBeginDraw();
+	void onEndDraw();
 
 private:
 
@@ -207,9 +210,12 @@ private:
 	ovrGLTexture    *_mirrorTexture;
 	ovrHmd           _HMD;
 	ovrLayerEyeFov   _ld;
+	cocos2d::Vec3       _offsetPos;
+	cocos2d::Quaternion _offsetRot;
 
 
-	cocos2d::CustomCommand _renderCommand;
+	cocos2d::CustomCommand _beginRenderCommand;
+	cocos2d::CustomCommand _endRenderCommand;
 };
 
 #endif

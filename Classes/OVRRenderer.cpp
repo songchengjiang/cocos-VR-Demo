@@ -2,9 +2,12 @@
 
 USING_NS_CC;
 
+#define RENDER_ORDER_ID 100
+
 OVRRenderer::OVRRenderer()
 	: _mirrorFBO(0)
 	, _mirrorTexture(nullptr)
+	, _offsetPos(Vec3::ZERO)
 {
 	for (int eye = 0; eye < 2; ++eye) {
 		_eyeRenderTexture[eye] = nullptr;
@@ -77,9 +80,9 @@ bool OVRRenderer::init(cocos2d::CameraFlag flag)
 	for (int eye = 0; eye < 2; ++eye) {
 		float fov = CC_RADIANS_TO_DEGREES(atan(hmdDesc.DefaultEyeFov[eye].UpTan) + atan(hmdDesc.DefaultEyeFov[eye].DownTan));
 		float aspectRadio = (hmdDesc.DefaultEyeFov[eye].LeftTan + hmdDesc.DefaultEyeFov[eye].RightTan) / (hmdDesc.DefaultEyeFov[eye].UpTan + hmdDesc.DefaultEyeFov[eye].DownTan);
-		_eyeCamera[eye] = Camera::createPerspective(fov, aspectRadio, 0.2f, 1000.0f);
+		_eyeCamera[eye] = Camera::createPerspective(fov, aspectRadio, 0.2f, 5000.0f);
 		_eyeCamera[eye]->setCameraFlag(flag);
-		_eyeCamera[eye]->setDepth(eye + 1);
+		//_eyeCamera[eye]->setDepth(eye + 1);
 		this->addChild(_eyeCamera[eye]);
 	}
 
@@ -107,18 +110,29 @@ OVRRenderer* OVRRenderer::create(cocos2d::CameraFlag flag)
 void OVRRenderer::draw(Renderer *renderer, const Mat4& transform, uint32_t flags)
 {
 	if (Camera::getVisitingCamera() == _eyeCamera[0] || Camera::getVisitingCamera() == _eyeCamera[1]) {
-		_renderCommand.init(_globalZOrder);
-		_renderCommand.func = CC_CALLBACK_0(OVRRenderer::onDraw, this);
-		renderer->addCommand(&_renderCommand);
+		_beginRenderCommand.init(-RENDER_ORDER_ID);
+		_beginRenderCommand.func = CC_CALLBACK_0(OVRRenderer::onBeginDraw, this);
+		renderer->addCommand(&_beginRenderCommand);
+
+		_endRenderCommand.init(RENDER_ORDER_ID);
+		_endRenderCommand.func = CC_CALLBACK_0(OVRRenderer::onEndDraw, this);
+		renderer->addCommand(&_endRenderCommand);
 	}
 }
 
-void OVRRenderer::onDraw()
+void OVRRenderer::onBeginDraw()
+{
+	glDepthMask(true);
+	int eye = Camera::getVisitingCamera() == _eyeCamera[0] ? 0 : 1;
+	_eyeRenderTexture[eye]->SetAndClearRenderSurface(_eyeDepthBuffer[eye]);
+}
+
+
+void OVRRenderer::onEndDraw()
 {
 	int eye = Camera::getVisitingCamera() == _eyeCamera[0] ? 0 : 1;
-	//_eyeRenderTexture[eye]->SetAndClearRenderSurface(_eyeDepthBuffer[eye]);
-	//_eyeRenderTexture[eye]->UnsetRenderSurface();
-	_eyeRenderTexture[eye]->BlitFramebuffer(_mirrorTexture->OGL.Header.TextureSize.w, _mirrorTexture->OGL.Header.TextureSize.h);
+	_eyeRenderTexture[eye]->UnsetRenderSurface();
+	//_eyeRenderTexture[eye]->BlitFramebuffer(_mirrorTexture->OGL.Header.TextureSize.w, _mirrorTexture->OGL.Header.TextureSize.h);
 
 	if (eye == 1) {
 		// Set up positional data.
@@ -141,6 +155,7 @@ void OVRRenderer::onDraw()
 			GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	}
+	glDepthMask(false);
 }
 
 void OVRRenderer::update(float delta)
@@ -157,11 +172,14 @@ void OVRRenderer::update(float delta)
 
 	for (int eye = 0; eye < 2; ++eye)
 	{
-		_eyeCamera[eye]->setPosition3D(Vec3(EyeRenderPose[eye].Position.x, EyeRenderPose[eye].Position.y, EyeRenderPose[eye].Position.z));
 		Quaternion quat(EyeRenderPose[eye].Orientation.x, EyeRenderPose[eye].Orientation.y, EyeRenderPose[eye].Orientation.z, EyeRenderPose[eye].Orientation.w);
+		quat = _offsetRot * quat;
 		Vec3 up = quat * Vec3::UNIT_Y;
 		Vec3 forword = quat * -Vec3::UNIT_Z;
-		_eyeCamera[eye]->lookAt(_eyeCamera[eye]->getPosition3D() + forword, up);
+
+		Vec3 shiftedEyePos = _offsetPos + _offsetRot * Vec3(EyeRenderPose[eye].Position.x, EyeRenderPose[eye].Position.y, EyeRenderPose[eye].Position.z);
+		_eyeCamera[eye]->setPosition3D(shiftedEyePos);
+		_eyeCamera[eye]->lookAt(shiftedEyePos + forword, up);
 
 		_eyeRenderTexture[eye]->TextureSet->CurrentIndex = (_eyeRenderTexture[eye]->TextureSet->CurrentIndex + 1) % _eyeRenderTexture[eye]->TextureSet->TextureCount;
 		_ld.ColorTexture[eye] = _eyeRenderTexture[eye]->TextureSet;
@@ -170,4 +188,14 @@ void OVRRenderer::update(float delta)
 		_ld.RenderPose[eye] = EyeRenderPose[eye];
 		_ld.SensorSampleTime = sensorSampleTime;
 	}
+}
+
+void OVRRenderer::setOffsetPos(const cocos2d::Vec3 &pos)
+{
+	_offsetPos += pos;
+}
+
+void OVRRenderer::setOffsetRot(const cocos2d::Quaternion &rot)
+{
+	_offsetRot *= rot;
 }
