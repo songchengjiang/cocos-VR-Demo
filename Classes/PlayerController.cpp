@@ -8,7 +8,7 @@ USING_NS_CC;
 #define CANNON_GUN_ROTATE_SPEED   10.0f
 #define TANK_MOVE_FORCE           3.0f
 #define TANK_TURN_TORQUE          45.0f
-#define TANK_BULLET_SPEED         10.0f
+#define TANK_BULLET_SPEED         100.0f
 
 
 PlayerController::PlayerController()
@@ -40,6 +40,7 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_SPACE) {
 		_cannonState = CannonState::SHOT;
+		_player->shot(TANK_BULLET_SPEED);
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_A) {
 		_moveState = PlayerMoveState::TURN_LEFT;
@@ -84,9 +85,6 @@ void PlayerController::update(float delta)
 	}
 	else if (_cannonState == CannonState::GUN_DOWN) {
 		_player->rotateCannonGun(-delta * CANNON_GUN_ROTATE_SPEED);
-	}
-	else if (_cannonState == CannonState::SHOT) {
-		_player->shot(TANK_BULLET_SPEED);
 	}
 
 	if (_moveState == PlayerMoveState::TURN_LEFT) {

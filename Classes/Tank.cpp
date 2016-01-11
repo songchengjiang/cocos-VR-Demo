@@ -38,7 +38,7 @@ bool Tank::init()
 void Tank::shot(float speed)
 {
 	shotBullet(speed);
-	//_gunfire->startParticleSystem();
+	_gunfire->startParticleSystem();
 }
 
 void Tank::rotateCannonStage(float angle)
@@ -84,13 +84,18 @@ void Tank::shotBullet(float speed)
 
 	Physics3DRigidBodyDes rbDes;
 	rbDes.mass = 100.f;
-	rbDes.shape = Physics3DShape::createCapsule(0.04f, 0.3f);
+	rbDes.shape = Physics3DShape::createCapsule(0.1f, 0.2f);
 	auto bullet = PhysicsSprite3D::create("models/bullet.c3b", &rbDes);
+	bullet->setTexture("models/orange_edit.png");
 	Director::getInstance()->getRunningScene()->addChild(bullet);
 
-	Vec3 linearVel = Vec3(-cos(CC_DEGREES_TO_RADIANS(_cannonGunAngle)) * sin(CC_DEGREES_TO_RADIANS(_cannonStageAngle))
+	Vec3 rotate = this->getRotation3D();
+
+	Vec3 linearVel = Vec3(cos(CC_DEGREES_TO_RADIANS(_cannonGunAngle)) * sin(CC_DEGREES_TO_RADIANS(_cannonStageAngle))
 		, sin(CC_DEGREES_TO_RADIANS(_cannonGunAngle))
 		, cos(CC_DEGREES_TO_RADIANS(_cannonGunAngle)) * cos(CC_DEGREES_TO_RADIANS(_cannonStageAngle)));
+
+	linearVel = this->getRotationQuat() * linearVel;
 
 	auto rigidBody = static_cast<Physics3DRigidBody*>(bullet->getPhysicsObj());
 	rigidBody->setLinearFactor(Vec3::ONE);
@@ -98,11 +103,29 @@ void Tank::shotBullet(float speed)
 	rigidBody->setAngularVelocity(Vec3::ZERO);
 	rigidBody->setCcdMotionThreshold(0.5f);
 	rigidBody->setCcdSweptSphereRadius(0.4f);
-
+	//rigidBody->setMask(0xffffffff);
+	rigidBody->setUserData(bullet);
 
 	bullet->setCameraMask(this->getCameraMask());
 	bullet->setPosition3D(bulletPos);
-	bullet->setRotation3D(Vec3(_cannonGunAngle - 85.0f, _cannonStageAngle, 0.0f));
+	bullet->setRotationQuat(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(_cannonStageAngle)) * this->getRotationQuat() * Quaternion(Vec3::UNIT_X, CC_DEGREES_TO_RADIANS(-_cannonGunAngle + 85.0f)));
+	//bullet->setRotation3D(this->getRotationQuat() * Vec3(0.0f, _cannonStageAngle, 0.0f) + Vec3(-_cannonGunAngle + 85.0f, 0.0f, 0.0f));
 	bullet->syncNodeToPhysics();
 	bullet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
+
+
+	rigidBody->setCollisionCallback([bullet](const Physics3DCollisionInfo &ci) {
+		if (!ci.collisionPointList.empty()) {
+			auto ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask(bullet->getCameraMask());
+			Director::getInstance()->getRunningScene()->addChild(ps);
+			ps->runAction(Sequence::create(CallFunc::create([bullet]() {
+				bullet->removeFromParent();
+			}), DelayTime::create(5.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+		}
+	});
 }
