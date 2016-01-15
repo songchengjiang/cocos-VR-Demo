@@ -12,16 +12,20 @@ public:
 	CREATE_FUNC(Tank);
 
 	virtual bool init();
+	virtual void update(float delta) override;
 
-	void move(float force);
-	void turnLeft(float torque);
-	void turnRight(float torque);
+	bool move(float force);
+	void turn(float torque);
 	void shot(float speed);
+	void shot(const cocos2d::Vec3 &target, float speed);
 	void rotateCannonStage(float angle);
 	void rotateCannonGun(float angle);
+	void setTexture(const std::string &texFile);
+	
+	void setAttackCallback(const cocos2d::Physics3DObject::CollisionCallbackFunc &func) { _callBack = func; }
 
-	cocos2d::Physics3DComponent* getPhysics3DComponent() { return _componet; }
-
+	void setHP(float hp);
+	float getHP() const { return _hp; }
 
 private:
 
@@ -34,11 +38,11 @@ private:
 	cocos2d::Node *_cannon;
 	float _cannonStageAngle;
 	float _cannonGunAngle;
-
-	cocos2d::Physics3DRigidBody *_rigid;
-	cocos2d::Physics3DComponent *_componet;
+	float _hp;
+	float _latestShootTime;
 
 	cocos2d::PUParticleSystem3D *_gunfire;
+	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

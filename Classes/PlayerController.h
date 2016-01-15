@@ -9,18 +9,27 @@ enum class PlayerMoveState
 {
 	MOVE,
 	STOP,
+};
+
+enum class PlayerRotateState
+{
 	TURN_LEFT,
 	TURN_RIGHT,
+	STOP,
 };
 
 enum class CannonState
 {
 	ROTATE_LEFT,
 	ROTATE_RIGHT,
+	STOP,
+};
+
+enum class GunState
+{
 	GUN_UP,
 	GUN_DOWN,
-	SHOT,
-	NONE,
+	STOP,
 };
 
 class PlayerController : public cocos2d::Node
@@ -47,8 +56,10 @@ private:
 
 	OVRRenderer *_ovrRenderer;
 	Tank        *_player;
-	PlayerMoveState _moveState;
-	CannonState     _cannonState;
+	PlayerMoveState   _moveState;
+	PlayerRotateState _rotateState;
+	CannonState       _cannonState;
+	GunState          _gunState;
 };
 
 #endif

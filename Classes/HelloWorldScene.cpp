@@ -6,6 +6,17 @@
 
 USING_NS_CC;
 
+#define HP_REDUCE_VALUE 10
+
+#define TARGET_FLAG 0xFF
+
+#define WALKING   1
+#define TRACKING  2
+#define ESCAPING  3
+#define DEAD      4
+
+unsigned short ENEMY_STATE = WALKING;
+
 Scene* HelloWorld::createScene()
 {
     // 'layer' is an autorelease object
@@ -77,91 +88,32 @@ bool HelloWorld::init()
 	//	this->setPhysics3DDebugCamera(camera);
 	//}
 
-	auto pc = PlayerController::create();
-	this->addChild(pc);
+	_player = Tank::create();
+	_player->setPosition3D(Vec3(0.0f, -50.0f, 120.0f));
+	_player->setCameraMask((unsigned short)CameraFlag::USER1);
+	this->addChild(_player);
 
-	auto tank = Tank::create();
-	tank->setPosition3D(Vec3(0.0f, -50.0f, 0.0f));
-	//tank->getPhysics3DComponent()->syncNodeToPhysics();
-	tank->setCameraMask((unsigned short)CameraFlag::USER1);
-	this->addChild(tank);
-	pc->setPlayer(tank);
+	_enemy = Tank::create();
+	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
+	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
+	_enemy->setTexture("models/tank/TexturesMods/Berezka/T-54.png");
+	_enemy->setCameraMask((unsigned short)CameraFlag::USER1);
+	_enemy->retain();
+	this->addChild(_enemy);
 
 	auto ovrRenderer = OVRRenderer::create(CameraFlag::USER1);
-	tank->addChild(ovrRenderer);
+	_player->addChild(ovrRenderer);
 	ovrRenderer->setOffsetPos(Vec3(0.0f, 2.7f, 0.0f));
-	pc->setOVRRenderer(ovrRenderer);
 
-	//auto skybox = Skybox::create("effects/skybox/left.jpg", "effects/skybox/right.jpg", "effects/skybox/top.jpg", "effects/skybox/bottom.jpg", "effects/skybox/front.jpg", "effects/skybox/back.jpg");
-	//skybox->setCameraMask((unsigned short)CameraFlag::USER1);
-	//this->addChild(skybox);
+	auto pc = PlayerController::create();
+	this->addChild(pc);
+	pc->setPlayer(_player);
+	pc->setOVRRenderer(ovrRenderer);
 
 	auto skybox = Sprite3D::create("effects/skybox/skybox.c3t");
 	skybox->setCameraMask((unsigned short)CameraFlag::USER1);
 	skybox->setScale(1000.0f);
 	this->addChild(skybox);
-	//static bool rotateON = false;
-	//static float x = 0.0;
-	//static float y = 0.0;
-	//auto mouse = EventListenerMouse::create();
-	//mouse->onMouseDown = [tank](EventMouse* event) {
-	//	rotateON = true;
-	//	x = event->getCursorX();
-	//	y = event->getCursorY();
-	//};
-	//mouse->onMouseUp = [tank](EventMouse* event) {
-	//	rotateON = false;
-	//};
-	//mouse->onMouseMove = [tank, ovrRenderer](EventMouse* event) {
-	//	if (rotateON) {
-	//		float deltaX = (event->getCursorX() - x) * 0.1;
-	//		float deltaY = (event->getCursorY() - y) * 0.1;
-	//		x = event->getCursorX();
-	//		y = event->getCursorY();
-	//		tank->rotateCannonStage(-deltaX);
-	//		//tank->rotateCannonGun(deltaY);
-	//		ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-deltaX))/* * Quaternion(Vec3::UNIT_X, deltaY * 0.01)*/);
-	//		CCLOG("(%f, %f)", deltaX, deltaY);
-	//	}
-	//};
-	//_eventDispatcher->addEventListenerWithSceneGraphPriority(mouse, this);
-
-	//auto keyboard = EventListenerKeyboard::create();
-	//keyboard->onKeyPressed = [tank, ovrRenderer](EventKeyboard::KeyCode code, Event *event) {
-	//	if (code == EventKeyboard::KeyCode::KEY_LEFT_ARROW) {
-	//		tank->rotateCannonStage(5.0f);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_RIGHT_ARROW) {
-	//		tank->rotateCannonStage(-5.0f);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_UP_ARROW) {
-	//		tank->rotateCannonGun(1.0f);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_DOWN_ARROW) {
-	//		tank->rotateCannonGun(-1.0f);
-	//	}
-
-	//	if (code == EventKeyboard::KeyCode::KEY_A) {
-	//		ovrRenderer->setOffsetPos(-Vec3::UNIT_X * 0.1);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_D) {
-	//		ovrRenderer->setOffsetPos(Vec3::UNIT_X * 0.1);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_W) {
-	//		ovrRenderer->setOffsetPos(-Vec3::UNIT_Z * 0.1);
-	//	}
-	//	else if (code == EventKeyboard::KeyCode::KEY_S) {
-	//		ovrRenderer->setOffsetPos(Vec3::UNIT_Z * 0.1);
-	//	}
-	//	//else if (code == EventKeyboard::KeyCode::KEY_HOME) {
-	//	//	ovrRenderer->setOffsetPos(Vec3::UNIT_Y * 0.1);
-	//	//}
-	//	//else if (code == EventKeyboard::KeyCode::KEY_END) {
-	//	//	ovrRenderer->setOffsetPos(-Vec3::UNIT_Y * 0.1);
-	//	//}
-	//};
-	//_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
-
 
 	Terrain::DetailMap r("models/terrain/dirt.jpg"), g("models/terrain/Grass2.jpg"), b("models/terrain/rock.png"), a("models/terrain/snow.png");
 
@@ -181,13 +133,100 @@ bool HelloWorld::init()
 	auto size = terrain->getTerrainSize();
 	Physics3DColliderDes colliderDes;
 	colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
-	auto collider = Physics3DCollider::create(&colliderDes);
-	auto component = Physics3DComponent::create(collider);
+	auto terrrainCollider = Physics3DCollider::create(&colliderDes);
+	auto component = Physics3DComponent::create(terrrainCollider);
 	terrain->addComponent(component);
 	component->syncNodeToPhysics();
 	component->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
 
 
+	//Physics3DRigidBodyDes rbDes;
+	//rbDes.mass = 10.0f;
+	//rbDes.shape = Physics3DShape::createBox(Vec3(1.0f, 1.0f, 1.0f));
+	//auto box = PhysicsSprite3D::create("models/box.c3t", &rbDes);
+	//box->setTexture("models/crate6.png");
+	//box->setPosition3D(Vec3(0.0f, -45.0f, -20.0f));
+	//box->syncNodeToPhysics();
+	//box->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
+	//box->setCameraMask((unsigned short)CameraFlag::USER1);
+	//box->setScale(1.0f);
+	//this->addChild(box);
+
+
+	_player->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
+		if (ci.objB == terrrainCollider) {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
+			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+		}
+		else {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
+			ps->setScale(0.5f);
+			ps->runAction(Sequence::create(DelayTime::create(3.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+
+			if (ci.objB->getUserData()) {
+				Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
+				tank->setHP(tank->getHP() - HP_REDUCE_VALUE);
+			}
+		}
+
+		CCLOG("(%f, %f, %f)", ci.collisionPointList[0].worldPositionOnB.x, ci.collisionPointList[0].worldPositionOnB.y, ci.collisionPointList[0].worldPositionOnB.z);
+		if (_enemy) {
+			if ((ci.collisionPointList[0].worldPositionOnB - _enemy->getPosition3D()).length() < 10.0f) {
+				ENEMY_STATE = TRACKING;
+			}
+		}
+	});
+
+
+	_enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
+		if (ci.objB == terrrainCollider) {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
+			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+		}
+		else {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
+			ps->setScale(0.5f);
+			ps->runAction(Sequence::create(DelayTime::create(3.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+
+			//if (ci.objB->getUserData()) {
+			//	Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
+			//	tank->setHP(tank->getHP() - HP_REDUCE_VALUE);
+			//}
+		}
+	});
+
+
+	auto sprite = BillBoard::create("target.png");
+	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
+	sprite->setScale(0.05f);
+	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
+	_enemy->addChild(sprite, 0, TARGET_FLAG);
+
+	scheduleUpdate();
     return true;
 }
 
@@ -199,4 +238,139 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
     exit(0);
 #endif
+}
+
+void HelloWorld::update(float delta)
+{
+	Vec3 safeDis = _player->getPosition3D() - _enemy->getPosition3D();
+	if (safeDis.length() < 50.0f) {
+		_enemy->getChildByTag(TARGET_FLAG)->setVisible(false);
+	}
+	else {
+		_enemy->getChildByTag(TARGET_FLAG)->setVisible(true);
+	}
+	enemyAI(delta);
+}
+
+void HelloWorld::enemyAI(float delta)
+{
+	if (_enemy->getHP() <= 50.0f) {
+		ENEMY_STATE = ESCAPING;
+	}
+
+	switch (ENEMY_STATE)
+	{
+	case WALKING:
+		enemyWalking(delta);
+		break;
+
+	case TRACKING:
+		enemyTracking(delta);
+		break;
+
+	case ESCAPING:
+		enemyEscaping(delta);
+		break;
+
+	case DEAD:
+		CCLOG("MISSION COMPLETE!");
+		break;
+
+	default:
+		break;
+	}
+}
+
+void HelloWorld::enemyWalking(float delta)
+{
+	if (_enemy->getHP() <= 0.0f) return;
+	static bool needChangeDir = false;
+	static float moveTime = 0.0f;
+	static float randomAngle = 0.0f;
+
+	moveTime -= delta;
+	if (moveTime <= 0.0f) {
+		moveTime = CCRANDOM_0_1() * 50.0f + 50.0f;
+		needChangeDir = true;
+	}
+
+	if (needChangeDir) {
+		randomAngle = 2.0;
+		needChangeDir = false;
+	}
+
+	if (0.0f < abs(randomAngle)) {
+		_enemy->turn(randomAngle);
+		float latestAngle = randomAngle;
+		randomAngle -= delta * randomAngle;
+		if (latestAngle * randomAngle < 0.0)
+			randomAngle = 0.0f;
+	}
+
+	if (!_enemy->move(delta * 3.0f)) {
+		needChangeDir = true;
+	}
+
+	Vec3 safeDis = _player->getPosition3D() - _enemy->getPosition3D();
+	if (safeDis.length() < 50.0f) {
+		ENEMY_STATE = TRACKING;
+	}
+}
+
+void HelloWorld::enemyTracking(float delta)
+{
+	if (_enemy->getHP() <= 0.0f) return;
+
+	Vec3 deltaDir = _player->getPosition3D() - _enemy->getPosition3D();
+	deltaDir.normalize();
+
+	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
+	enemydir.normalize();
+
+	float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
+	Vec3 up;
+	Vec3::cross(enemydir, deltaDir, &up);
+	if (up.y < 0.0)
+		theta = -theta;
+
+	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
+	_enemy->move(delta * 3.0f);
+
+	_enemy->shot(_player->getPosition3D(), 100.0f);
+}
+
+void HelloWorld::enemyEscaping(float delta)
+{
+	if (_enemy->getHP() <= 0.0f) return;
+
+	Vec3 deltaDir = _enemy->getPosition3D() - _player->getPosition3D();
+	deltaDir.normalize();
+
+	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
+	enemydir.normalize();
+
+	float theta = acos(enemydir.dot(deltaDir));
+	Vec3 up;
+	Vec3::cross(enemydir, deltaDir, &up);
+	if (up.y < 0.0)
+		theta = -theta;
+
+	static float moveSpeed = 3.0f;
+	if (_enemy->getHP() <= 50.0f && 30.0 < _enemy->getHP()) {
+		moveSpeed = 2.0f;
+	}
+	else if (_enemy->getHP() <= 30.0f) {
+		moveSpeed = 1.0f;
+	}
+	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
+	_enemy->move(delta * moveSpeed);
+
+	_enemy->shot(_player->getPosition3D(), 100.0f);
+}
+
+void HelloWorld::playerUpdate(float delta)
+{
+	if (_player->getHP() <= 0.0) {
+		CCLOG("GAME OVER!");
+	}
 }

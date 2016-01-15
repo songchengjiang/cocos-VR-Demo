@@ -2,43 +2,86 @@
 
 USING_NS_CC;
 
+#define BULLET_RELOAD_TIME 3.0
+#define MOVE_AREA_RADIUS   150.0f
+#define SMOKE_PS_TAG  0x0F
+
+void recycleSetTexture(Node *node, Texture2D *texture)
+{
+	if (dynamic_cast<Sprite3D *>(node)) {
+		dynamic_cast<Sprite3D *>(node)->setTexture(texture);
+	}
+	for (auto &child : node->getChildren()) {
+		recycleSetTexture(child, texture);
+	}
+}
+
 Tank::Tank()
 	: _cannonStageAngle(180.0f)
 	, _cannonGunAngle(0.0f)
+	, _hp(100.0f)
+	, _latestShootTime(0.0f)
 {
 
 }
 
 bool Tank::init()
 {
-	Sprite3D::initWithFile("models/tank.c3b");
+	Sprite3D::initWithFile("models/tank/tank.c3b");
 	this->setRotation3D(Vec3(0.0f, 0.0f, 0.0f));
 	this->setPosition3D(Vec3::ZERO);
 	this->setScale(1.0f);
 
-	//auto aabb = this->getAABBRecursively();
-	//Vec3 size = Vec3(aabb._max - aabb._min);
-	//Physics3DRigidBodyDes rigidDes;
-	//rigidDes.mass = 39700.0f;//ton
-	//rigidDes.originalTransform.setIdentity();
-	//rigidDes.shape = Physics3DShape::createBox(size);
-	//_rigid = Physics3DRigidBody::create(&rigidDes);
-	//_componet = Physics3DComponent::create(_rigid, Vec3(0.0f, -size.y * 0.5f, -size.z * 0.2f), Quaternion());
-	//this->addComponent(_componet);
-	//_componet->syncNodeToPhysics();
-	//_componet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
+	auto aabb = this->getAABBRecursively();
+	Vec3 size = Vec3(aabb._max - aabb._min);
+	Physics3DRigidBodyDes rigidDes;
+	rigidDes.mass = 0.0f;//ton
+	rigidDes.originalTransform.setIdentity();
+	rigidDes.shape = Physics3DShape::createBox(Vec3(size.x, size.y * 0.5f, size.z * 0.7f));
+	auto rigid = Physics3DRigidBody::create(&rigidDes);
+	rigid->setKinematic(true);
+	rigid->setUserData(this);
+	auto componet = Physics3DComponent::create(rigid, Vec3(0.0f, -size.y * 0.25f, size.z * 0.05f), Quaternion());
+	this->addComponent(componet);
+	componet->syncNodeToPhysics();
+	//componet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NODE_TO_PHYSICS);
 
 
 	_cannon = this->getChildByName("cannon");
 	_gunfire = PUParticleSystem3D::create("effects/Particle3D/scripts/gunfire.pu");
 	_cannon->getChildByName("gun")->getChildByName("gunfire")->addChild(_gunfire);
+
+	scheduleUpdate();
 	return true;
 }
 
 void Tank::shot(float speed)
 {
-	shotBullet(speed);
-	_gunfire->startParticleSystem();
+	if (BULLET_RELOAD_TIME < _latestShootTime) {
+		shotBullet(speed);
+		_gunfire->startParticleSystem();
+		_latestShootTime = 0.0f;
+	}
+}
+
+void Tank::shot(const Vec3 &target, float speed)
+{
+	float dis = (target - this->getPosition3D()).length();
+	float gunAngle = dis / 14.5f - 6.0f;
+	rotateCannonGun(gunAngle - _cannonGunAngle);
+
+	Vec3 dir = target - this->getPosition3D();
+	dir.normalize();
+	Quaternion rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(_cannonStageAngle - 180.0f)) * this->getRotationQuat();
+	Vec3 gunDir = rot * -Vec3::UNIT_Z;
+	gunDir.normalize();
+	float theta = acos(clampf(gunDir.dot(dir), 0.0f, 1.0f));
+	Vec3 up;
+	Vec3::cross(gunDir, dir, &up);
+	if (up.y < 0.0)
+		theta = -theta;
+	rotateCannonStage(CC_RADIANS_TO_DEGREES(theta));
+	shot(speed);
 }
 
 void Tank::rotateCannonStage(float angle)
@@ -56,22 +99,19 @@ void Tank::rotateCannonGun(float angle)
 	gun->setRotation3D(Vec3(-_cannonGunAngle, 0.0f, 0.0f));
 }
 
-void Tank::move(float force)
+bool Tank::move(float force)
 {
-	//Vec3 f = this->getRotationQuat() * Vec3(0.0f, 0.0f, -force);
-	//_rigid->applyCentralForce(f);
-	this->setPosition3D(this->getPosition3D() + this->getRotationQuat() * Vec3(0.0f, 0.0f, -force));
+	Vec3 requestPos = Vec3(this->getPosition3D() + this->getRotationQuat() * Vec3(0.0f, 0.0f, -force));
+	if (requestPos.length() < MOVE_AREA_RADIUS) {
+		this->setPosition3D(requestPos);
+		return true;
+	}
+	return false;
 }
 
-void Tank::turnLeft(float torque)
+void Tank::turn(float torque)
 {
 	auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(torque));
-	this->setRotationQuat(this->getRotationQuat() * rot);
-}
-
-void Tank::turnRight(float torque)
-{
-	auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-torque));
 	this->setRotationQuat(this->getRotationQuat() * rot);
 }
 
@@ -83,7 +123,7 @@ void Tank::shotBullet(float speed)
 	bulletWorldMat.decompose(nullptr, &bulletRot, &bulletPos);
 
 	Physics3DRigidBodyDes rbDes;
-	rbDes.mass = 100.f;
+	rbDes.mass = 10.f;
 	rbDes.shape = Physics3DShape::createCapsule(0.1f, 0.2f);
 	auto bullet = PhysicsSprite3D::create("models/bullet.c3b", &rbDes);
 	bullet->setTexture("models/orange_edit.png");
@@ -114,18 +154,59 @@ void Tank::shotBullet(float speed)
 	bullet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
 
 
-	rigidBody->setCollisionCallback([bullet](const Physics3DCollisionInfo &ci) {
+	rigidBody->setCollisionCallback([bullet, this](const Physics3DCollisionInfo &ci) {
 		if (!ci.collisionPointList.empty()) {
-			auto ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
-			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
-			ps->startParticleSystem();
-			ps->setCameraMask(bullet->getCameraMask());
-			Director::getInstance()->getRunningScene()->addChild(ps);
-			ps->runAction(Sequence::create(CallFunc::create([bullet]() {
+			bullet->runAction(CallFunc::create([bullet]() {
 				bullet->removeFromParent();
-			}), DelayTime::create(5.0f), CallFunc::create([ps]() {
-				ps->removeFromParent();
-			}), nullptr));
+			}));
+			if (this->_callBack != nullptr) {
+				this->_callBack(ci);
+			}
 		}
 	});
+}
+
+void Tank::setTexture(const std::string &texFile)
+{
+	auto tex = Director::getInstance()->getTextureCache()->addImage(texFile);
+	recycleSetTexture(_cannon, tex);
+	recycleSetTexture(this->getChildByName("body"), tex);
+}
+
+void Tank::setHP(float hp)
+{
+	if (hp < 0.0)
+		_hp = 0.0;
+	else
+		_hp = hp;
+
+	if (_hp == 0.0f) {
+		this->runAction(Sequence::create(DelayTime::create(1.0f), CallFunc::create([this]() {
+			this->removeFromParent();
+		}), nullptr));
+
+		auto explosion = PUParticleSystem3D::create("effects/Particle3D/scripts/explosionSystem.pu");
+		explosion->setScale(5.0f);
+		explosion->startParticleSystem();
+		explosion->setCameraMask(this->getCameraMask());
+		explosion->setPosition3D(this->getPosition3D());
+		Director::getInstance()->getRunningScene()->addChild(explosion);
+		explosion->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([explosion]() {
+			explosion->removeFromParent();
+		}), nullptr));
+	}
+	else if (_hp <= 50.0f) {
+		if (!this->getChildByTag(SMOKE_PS_TAG)) {
+			auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
+			smoke->setScale(0.05f);
+			smoke->startParticleSystem();
+			smoke->setCameraMask(this->getCameraMask());
+			this->addChild(smoke, 0, SMOKE_PS_TAG);
+		}
+	}
+}
+
+void Tank::update(float delta)
+{
+	_latestShootTime += delta;
 }
