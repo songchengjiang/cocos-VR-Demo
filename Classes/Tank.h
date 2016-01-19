@@ -20,7 +20,9 @@ public:
 	void shot(const cocos2d::Vec3 &target, float speed);
 	void rotateCannonStage(float angle);
 	void rotateCannonGun(float angle);
-	void setTexture(const std::string &texFile);
+	void setTexture(cocos2d::Texture2D *texture);
+	float getCannonStageAngle() const { return _cannonStageAngle; }
+	float getCannonGunAngle() const { return _cannonGunAngle; }
 	
 	void setAttackCallback(const cocos2d::Physics3DObject::CollisionCallbackFunc &func) { _callBack = func; }
 
@@ -40,6 +42,8 @@ private:
 	float _cannonGunAngle;
 	float _hp;
 	float _latestShootTime;
+	bool  _needUpdateCannonStage;
+	bool  _needUpdateGunAngle;
 
 	cocos2d::PUParticleSystem3D *_gunfire;
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;

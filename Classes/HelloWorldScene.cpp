@@ -7,8 +7,10 @@
 USING_NS_CC;
 
 #define HP_REDUCE_VALUE 10
+#define HP_LOWER_LIMIT  50
 
-#define TARGET_FLAG 0xFF
+#define SMOKE_PS_TAG  0x0F
+#define TARGET_TAG    0xFF
 
 #define WALKING   1
 #define TRACKING  2
@@ -93,13 +95,8 @@ bool HelloWorld::init()
 	_player->setCameraMask((unsigned short)CameraFlag::USER1);
 	this->addChild(_player);
 
-	_enemy = Tank::create();
-	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
-	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
-	_enemy->setTexture("models/tank/TexturesMods/Berezka/T-54.png");
-	_enemy->setCameraMask((unsigned short)CameraFlag::USER1);
-	_enemy->retain();
-	this->addChild(_enemy);
+	_crashTexture = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54_crash.png");
+	generateEnemy();
 
 	auto ovrRenderer = OVRRenderer::create(CameraFlag::USER1);
 	_player->addChild(ovrRenderer);
@@ -133,8 +130,8 @@ bool HelloWorld::init()
 	auto size = terrain->getTerrainSize();
 	Physics3DColliderDes colliderDes;
 	colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
-	auto terrrainCollider = Physics3DCollider::create(&colliderDes);
-	auto component = Physics3DComponent::create(terrrainCollider);
+	_terrainCollider = Physics3DCollider::create(&colliderDes);
+	auto component = Physics3DComponent::create(_terrainCollider);
 	terrain->addComponent(component);
 	component->syncNodeToPhysics();
 	component->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
@@ -154,7 +151,7 @@ bool HelloWorld::init()
 
 
 	_player->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
-		if (ci.objB == terrrainCollider) {
+		if (ci.objB == _terrainCollider) {
 			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
 			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
 				ps->removeFromParent();
@@ -175,13 +172,46 @@ bool HelloWorld::init()
 			ps->setCameraMask((unsigned short)CameraFlag::USER1);
 			this->addChild(ps);
 
-			if (ci.objB->getUserData()) {
-				Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
-				tank->setHP(tank->getHP() - HP_REDUCE_VALUE);
+			_enemy->setHP(_enemy->getHP() - HP_REDUCE_VALUE);
+
+			if (_enemy->getHP() <= HP_LOWER_LIMIT) {
+				if (!_enemy->getChildByTag(SMOKE_PS_TAG)) {
+					auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
+					smoke->setScale(0.05f);
+					smoke->startParticleSystem();
+					smoke->setCameraMask(_enemy->getCameraMask());
+					_enemy->addChild(smoke, 0, SMOKE_PS_TAG);
+
+					_enemy->setTexture(_crashTexture);
+				}
+			}
+
+			if (_enemy->getHP() == 0) {
+				auto enemy = _enemy;
+				_enemy->runAction(Sequence::create(DelayTime::create(1.0f), CallFunc::create([enemy]() {
+					enemy->removeFromParent();
+				}), nullptr));
+
+				auto explosion = PUParticleSystem3D::create("effects/Particle3D/scripts/explosionSystem.pu");
+				explosion->setScale(5.0f);
+				explosion->startParticleSystem();
+				explosion->setCameraMask(_enemy->getCameraMask());
+				explosion->setPosition3D(_enemy->getPosition3D());
+				this->addChild(explosion);
+				explosion->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([explosion]() {
+					explosion->removeFromParent();
+				}), nullptr));
+
+				this->runAction(Sequence::create(DelayTime::create(6.0f), CallFunc::create([this]() {
+					this->generateEnemy();
+					this->scheduleUpdate();
+				}), nullptr));
+
+				this->unscheduleUpdate();
 			}
 		}
 
-		CCLOG("(%f, %f, %f)", ci.collisionPointList[0].worldPositionOnB.x, ci.collisionPointList[0].worldPositionOnB.y, ci.collisionPointList[0].worldPositionOnB.z);
+		//CCLOG("(%f, %f, %f)", ci.collisionPointList[0].worldPositionOnB.x, ci.collisionPointList[0].worldPositionOnB.y, ci.collisionPointList[0].worldPositionOnB.z);
 		if (_enemy) {
 			if ((ci.collisionPointList[0].worldPositionOnB - _enemy->getPosition3D()).length() < 10.0f) {
 				ENEMY_STATE = TRACKING;
@@ -189,42 +219,6 @@ bool HelloWorld::init()
 		}
 	});
 
-
-	_enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
-		if (ci.objB == terrrainCollider) {
-			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
-			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
-				ps->removeFromParent();
-			}), nullptr));
-			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
-			ps->startParticleSystem();
-			ps->setCameraMask((unsigned short)CameraFlag::USER1);
-			this->addChild(ps);
-		}
-		else {
-			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
-			ps->setScale(0.5f);
-			ps->runAction(Sequence::create(DelayTime::create(3.0f), CallFunc::create([ps]() {
-				ps->removeFromParent();
-			}), nullptr));
-			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
-			ps->startParticleSystem();
-			ps->setCameraMask((unsigned short)CameraFlag::USER1);
-			this->addChild(ps);
-
-			//if (ci.objB->getUserData()) {
-			//	Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
-			//	tank->setHP(tank->getHP() - HP_REDUCE_VALUE);
-			//}
-		}
-	});
-
-
-	auto sprite = BillBoard::create("target.png");
-	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
-	sprite->setScale(0.05f);
-	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
-	_enemy->addChild(sprite, 0, TARGET_FLAG);
 
 	scheduleUpdate();
     return true;
@@ -244,10 +238,10 @@ void HelloWorld::update(float delta)
 {
 	Vec3 safeDis = _player->getPosition3D() - _enemy->getPosition3D();
 	if (safeDis.length() < 50.0f) {
-		_enemy->getChildByTag(TARGET_FLAG)->setVisible(false);
+		_enemy->getChildByTag(TARGET_TAG)->setVisible(false);
 	}
 	else {
-		_enemy->getChildByTag(TARGET_FLAG)->setVisible(true);
+		_enemy->getChildByTag(TARGET_TAG)->setVisible(true);
 	}
 	enemyAI(delta);
 }
@@ -349,7 +343,7 @@ void HelloWorld::enemyEscaping(float delta)
 	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
 	enemydir.normalize();
 
-	float theta = acos(enemydir.dot(deltaDir));
+	float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
 	Vec3 up;
 	Vec3::cross(enemydir, deltaDir, &up);
 	if (up.y < 0.0)
@@ -373,4 +367,55 @@ void HelloWorld::playerUpdate(float delta)
 	if (_player->getHP() <= 0.0) {
 		CCLOG("GAME OVER!");
 	}
+}
+
+void HelloWorld::generateEnemy()
+{
+	_enemy = Tank::create();
+	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
+	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
+	auto tex = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54.png");
+	_enemy->setTexture(tex);
+	_enemy->setCameraMask((unsigned short)CameraFlag::USER1);
+	_enemy->retain();
+	this->addChild(_enemy);
+
+
+	auto sprite = BillBoard::create("target.png");
+	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
+	sprite->setScale(0.05f);
+	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
+	_enemy->addChild(sprite, 0, TARGET_TAG);
+
+
+	_enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
+		if (ci.objB == _terrainCollider) {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
+			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+		}
+		else {
+			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
+			ps->setScale(0.5f);
+			ps->runAction(Sequence::create(DelayTime::create(3.0f), CallFunc::create([ps]() {
+				ps->removeFromParent();
+			}), nullptr));
+			ps->setPosition3D(ci.collisionPointList[0].worldPositionOnB);
+			ps->startParticleSystem();
+			ps->setCameraMask((unsigned short)CameraFlag::USER1);
+			this->addChild(ps);
+
+			//if (ci.objB->getUserData()) {
+			//	Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
+			//	tank->setHP(tank->getHP() - HP_REDUCE_VALUE);
+			//}
+		}
+	});
+
+	ENEMY_STATE = WALKING;
 }

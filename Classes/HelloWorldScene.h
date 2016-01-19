@@ -2,6 +2,7 @@
 #define __HELLOWORLD_SCENE_H__
 
 #include "cocos2d.h"
+#include "physics3d/CCPhysics3D.h"
 
 class Tank;
 class HelloWorld : public cocos2d::Scene
@@ -20,6 +21,8 @@ public:
 
 private:
 
+	void generateEnemy();
+
 	void playerUpdate(float delta);
 	void enemyAI(float delta);
 	void enemyWalking(float delta);
@@ -30,6 +33,8 @@ private:
 
 	Tank *_enemy;
 	Tank *_player;
+	cocos2d::Physics3DCollider *_terrainCollider;
+	cocos2d::Texture2D *_crashTexture;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

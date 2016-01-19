@@ -2,9 +2,8 @@
 
 USING_NS_CC;
 
-#define BULLET_RELOAD_TIME 3.0
+#define BULLET_RELOAD_TIME 2.0
 #define MOVE_AREA_RADIUS   150.0f
-#define SMOKE_PS_TAG  0x0F
 
 void recycleSetTexture(Node *node, Texture2D *texture)
 {
@@ -21,6 +20,8 @@ Tank::Tank()
 	, _cannonGunAngle(0.0f)
 	, _hp(100.0f)
 	, _latestShootTime(0.0f)
+	, _needUpdateCannonStage(false)
+	, _needUpdateGunAngle(false)
 {
 
 }
@@ -67,7 +68,7 @@ void Tank::shot(float speed)
 void Tank::shot(const Vec3 &target, float speed)
 {
 	float dis = (target - this->getPosition3D()).length();
-	float gunAngle = dis / 14.5f - 6.0f;
+	float gunAngle = dis / 14.3f - 6.0f;
 	rotateCannonGun(gunAngle - _cannonGunAngle);
 
 	Vec3 dir = target - this->getPosition3D();
@@ -87,7 +88,7 @@ void Tank::shot(const Vec3 &target, float speed)
 void Tank::rotateCannonStage(float angle)
 {
 	_cannonStageAngle += angle;
-	_cannon->setRotation3D(Vec3(-90.0f, _cannonStageAngle, 0.0f));
+	_needUpdateCannonStage = true;
 }
 
 void Tank::rotateCannonGun(float angle)
@@ -95,8 +96,7 @@ void Tank::rotateCannonGun(float angle)
 	_cannonGunAngle += angle;
 	if (10.0f < _cannonGunAngle) _cannonGunAngle = 10.0f;
 	if (_cannonGunAngle < -5.0f) _cannonGunAngle = -5.0f;
-	auto gun = _cannon->getChildByName("gun");
-	gun->setRotation3D(Vec3(-_cannonGunAngle, 0.0f, 0.0f));
+	_needUpdateGunAngle = true;
 }
 
 bool Tank::move(float force)
@@ -166,11 +166,10 @@ void Tank::shotBullet(float speed)
 	});
 }
 
-void Tank::setTexture(const std::string &texFile)
+void Tank::setTexture(cocos2d::Texture2D *texture)
 {
-	auto tex = Director::getInstance()->getTextureCache()->addImage(texFile);
-	recycleSetTexture(_cannon, tex);
-	recycleSetTexture(this->getChildByName("body"), tex);
+	recycleSetTexture(_cannon, texture);
+	recycleSetTexture(this->getChildByName("body"), texture);
 }
 
 void Tank::setHP(float hp)
@@ -179,34 +178,19 @@ void Tank::setHP(float hp)
 		_hp = 0.0;
 	else
 		_hp = hp;
-
-	if (_hp == 0.0f) {
-		this->runAction(Sequence::create(DelayTime::create(1.0f), CallFunc::create([this]() {
-			this->removeFromParent();
-		}), nullptr));
-
-		auto explosion = PUParticleSystem3D::create("effects/Particle3D/scripts/explosionSystem.pu");
-		explosion->setScale(5.0f);
-		explosion->startParticleSystem();
-		explosion->setCameraMask(this->getCameraMask());
-		explosion->setPosition3D(this->getPosition3D());
-		Director::getInstance()->getRunningScene()->addChild(explosion);
-		explosion->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([explosion]() {
-			explosion->removeFromParent();
-		}), nullptr));
-	}
-	else if (_hp <= 50.0f) {
-		if (!this->getChildByTag(SMOKE_PS_TAG)) {
-			auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
-			smoke->setScale(0.05f);
-			smoke->startParticleSystem();
-			smoke->setCameraMask(this->getCameraMask());
-			this->addChild(smoke, 0, SMOKE_PS_TAG);
-		}
-	}
 }
 
 void Tank::update(float delta)
 {
 	_latestShootTime += delta;
+	if (_needUpdateCannonStage) {
+		_cannon->setRotation3D(Vec3(-90.0f, _cannonStageAngle, 0.0f));
+		_needUpdateCannonStage = false;
+	}
+
+	if (_needUpdateGunAngle) {
+		auto gun = _cannon->getChildByName("gun");
+		gun->setRotation3D(Vec3(-_cannonGunAngle, 0.0f, 0.0f));
+		_needUpdateGunAngle = false;
+	}
 }
