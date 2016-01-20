@@ -3,8 +3,10 @@
 #include "OVRRenderer.h"
 #include "PlayerController.h"
 #include "physics3d/CCPhysics3D.h"
+#include "SimpleAudioEngine.h"
 
 USING_NS_CC;
+using namespace CocosDenshion;
 
 #define HP_REDUCE_VALUE 10
 #define HP_LOWER_LIMIT  50
@@ -160,6 +162,7 @@ bool HelloWorld::init()
 			ps->startParticleSystem();
 			ps->setCameraMask((unsigned short)CameraFlag::USER1);
 			this->addChild(ps);
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/explosion1.mp3").c_str());
 		}
 		else {
 			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
@@ -207,10 +210,12 @@ bool HelloWorld::init()
 					this->scheduleUpdate();
 				}), nullptr));
 
+				SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/boom.mp3").c_str());
 				this->unscheduleUpdate();
 			}
-		}
 
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/metal_crash1.mp3").c_str());
+		}
 		//CCLOG("(%f, %f, %f)", ci.collisionPointList[0].worldPositionOnB.x, ci.collisionPointList[0].worldPositionOnB.y, ci.collisionPointList[0].worldPositionOnB.z);
 		if (_enemy) {
 			if ((ci.collisionPointList[0].worldPositionOnB - _enemy->getPosition3D()).length() < 10.0f) {
@@ -219,6 +224,7 @@ bool HelloWorld::init()
 		}
 	});
 
+	SimpleAudioEngine::getInstance()->playBackgroundMusic(FileUtils::getInstance()->fullPathForFilename("sound/background.mp3").c_str(), true);
 
 	scheduleUpdate();
     return true;
@@ -330,7 +336,9 @@ void HelloWorld::enemyTracking(float delta)
 	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
 	_enemy->move(delta * 3.0f);
 
-	_enemy->shot(_player->getPosition3D(), 100.0f);
+	if (_enemy->shot(_player->getPosition3D(), 100.0f)) {
+		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
+	}
 }
 
 void HelloWorld::enemyEscaping(float delta)
@@ -359,7 +367,9 @@ void HelloWorld::enemyEscaping(float delta)
 	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
 	_enemy->move(delta * moveSpeed);
 
-	_enemy->shot(_player->getPosition3D(), 100.0f);
+	if (_enemy->shot(_player->getPosition3D(), 100.0f)) {
+		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
+	}
 }
 
 void HelloWorld::playerUpdate(float delta)
@@ -398,6 +408,7 @@ void HelloWorld::generateEnemy()
 			ps->startParticleSystem();
 			ps->setCameraMask((unsigned short)CameraFlag::USER1);
 			this->addChild(ps);
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/explosion2.mp3").c_str());
 		}
 		else {
 			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/metalExplosion.pu");
@@ -409,7 +420,7 @@ void HelloWorld::generateEnemy()
 			ps->startParticleSystem();
 			ps->setCameraMask((unsigned short)CameraFlag::USER1);
 			this->addChild(ps);
-
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/metal_crash2.mp3").c_str());
 			//if (ci.objB->getUserData()) {
 			//	Tank *tank = static_cast<Tank *>(ci.objB->getUserData());
 			//	tank->setHP(tank->getHP() - HP_REDUCE_VALUE);

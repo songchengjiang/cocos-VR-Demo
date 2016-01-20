@@ -1,8 +1,10 @@
 #include "PlayerController.h"
 #include "OVRRenderer.h"
 #include "Tank.h"
+#include "SimpleAudioEngine.h"
 
 USING_NS_CC;
+using namespace CocosDenshion;
 
 #define CANNON_STAGE_ROTATE_SPEED     2.0f
 #define CANNON_STAGE_MAX_ROTATE_SPEED 1.0f
@@ -27,6 +29,9 @@ static float TANK_ROTATE_TIME = 0.0f;
 static bool  TANK_MOVE_ON = false;
 static float TANK_MOVE_TIME = 0.0f;
 
+static unsigned int CONNON_ROTATE_SOUND = 0;
+static unsigned int TANK_MOVE_SOUND = 0;
+
 PlayerController::PlayerController()
 	: _ovrRenderer(nullptr)
 	, _player(nullptr)
@@ -48,11 +53,13 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		_cannonState = CannonState::ROTATE_LEFT;
 		CONNON_ROTATE_TIME = 0.0f;
 		CONNON_ROTATE_ON = true;
+		CONNON_ROTATE_SOUND = SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/cannon_rotate2.mp3").c_str(), true);
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_RIGHT_ARROW) {
 		_cannonState = CannonState::ROTATE_RIGHT;
 		CONNON_ROTATE_TIME = 0.0f;
 		CONNON_ROTATE_ON = true;
+		CONNON_ROTATE_SOUND = SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/cannon_rotate2.mp3").c_str(), true);
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_UP_ARROW) {
@@ -68,7 +75,9 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 
 	if (code == EventKeyboard::KeyCode::KEY_SPACE) {
 		//_cannonState = CannonState::SHOT;
-		_player->shot(TANK_BULLET_SPEED);
+		if (_player->shot(TANK_BULLET_SPEED)) {
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/player_shot.mp3").c_str());
+		}
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_A) {
@@ -168,6 +177,7 @@ void PlayerController::update(float delta)
 	if (CONNON_ROTATE_TIME < 0.0f) {
 		CONNON_ROTATE_TIME = 0.0f;
 		_cannonState = CannonState::STOP;
+		SimpleAudioEngine::getInstance()->stopEffect(CONNON_ROTATE_SOUND);
 	}
 
 	if (GUN_ROTATE_ON)
@@ -208,6 +218,7 @@ void PlayerController::update(float delta)
 	if (TANK_MOVE_TIME < 0.0f) {
 		TANK_MOVE_TIME = 0.0f;
 		_moveState = PlayerMoveState::STOP;
+		SimpleAudioEngine::getInstance()->stopEffect(TANK_MOVE_SOUND);
 	}
 }
 

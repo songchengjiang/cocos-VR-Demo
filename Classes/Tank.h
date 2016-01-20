@@ -16,8 +16,8 @@ public:
 
 	bool move(float force);
 	void turn(float torque);
-	void shot(float speed);
-	void shot(const cocos2d::Vec3 &target, float speed);
+	bool shot(float speed);
+	bool shot(const cocos2d::Vec3 &target, float speed);
 	void rotateCannonStage(float angle);
 	void rotateCannonGun(float angle);
 	void setTexture(cocos2d::Texture2D *texture);

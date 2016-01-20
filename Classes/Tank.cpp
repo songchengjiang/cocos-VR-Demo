@@ -56,16 +56,18 @@ bool Tank::init()
 	return true;
 }
 
-void Tank::shot(float speed)
+bool Tank::shot(float speed)
 {
 	if (BULLET_RELOAD_TIME < _latestShootTime) {
 		shotBullet(speed);
 		_gunfire->startParticleSystem();
 		_latestShootTime = 0.0f;
+		return true;
 	}
+	return false;
 }
 
-void Tank::shot(const Vec3 &target, float speed)
+bool Tank::shot(const Vec3 &target, float speed)
 {
 	float dis = (target - this->getPosition3D()).length();
 	float gunAngle = dis / 14.3f - 6.0f;
@@ -82,7 +84,7 @@ void Tank::shot(const Vec3 &target, float speed)
 	if (up.y < 0.0)
 		theta = -theta;
 	rotateCannonStage(CC_RADIANS_TO_DEGREES(theta));
-	shot(speed);
+	return shot(speed);
 }
 
 void Tank::rotateCannonStage(float angle)
@@ -125,8 +127,8 @@ void Tank::shotBullet(float speed)
 	Physics3DRigidBodyDes rbDes;
 	rbDes.mass = 10.f;
 	rbDes.shape = Physics3DShape::createCapsule(0.1f, 0.2f);
-	auto bullet = PhysicsSprite3D::create("models/bullet.c3b", &rbDes);
-	bullet->setTexture("models/orange_edit.png");
+	auto bullet = PhysicsSprite3D::create("models/tank/bullet.c3b", &rbDes);
+	bullet->setTexture("models/tank/orange_edit.png");
 	Director::getInstance()->getRunningScene()->addChild(bullet);
 
 	Vec3 rotate = this->getRotation3D();
