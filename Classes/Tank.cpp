@@ -29,7 +29,7 @@ Tank::Tank()
 
 bool Tank::init()
 {
-	Sprite3D::initWithFile("models/tanks/M24/M24.c3b");
+	Sprite3D::initWithFile(getModelFilePath());
 	this->setRotation3D(Vec3(0.0f, 0.0f, 0.0f));
 	this->setPosition3D(Vec3::ZERO);
 	this->setScale(1.0f);
@@ -117,6 +117,8 @@ bool Tank::move(float force)
 	Vec3 requestPos = Vec3(this->getPosition3D() + this->getRotationQuat() * Vec3(0.0f, 0.0f, -force));
 	if (requestPos.length() < MOVE_AREA_RADIUS) {
 		this->setPosition3D(requestPos);
+		changeLeftTrackTexture(force * 7.0f);
+		changeRightTrackTexture(force * 7.0f);
 		return true;
 	}
 	return false;
@@ -127,6 +129,8 @@ void Tank::turn(float torque)
 	_turnAngle += torque;
 	auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(torque));
 	this->setRotationQuat(this->getRotationQuat() * rot);
+	changeLeftTrackTexture(-torque);
+	changeRightTrackTexture(torque);
 }
 
 void Tank::shotBullet(float speed)
@@ -212,4 +216,22 @@ void Tank::update(float delta)
 		float intensity = _pointLight->getIntensity() - 5.0f * delta;
 		_pointLight->setIntensity(0.0f <= intensity? intensity: 0.0f);
 	}
+}
+
+void Tank::changeLeftTrackTexture(float step)
+{
+	static float currentIdx = 0.0f;
+	currentIdx += step;
+	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
+	currentIdx = fmod(currentIdx, 4.0f);
+	static_cast<Sprite3D *>(this->getChildByName("Lefttrack"))->setTexture(_trackTextures[(int)currentIdx]);
+}
+
+void Tank::changeRightTrackTexture(float step)
+{
+	static float currentIdx = 0.0f;
+	currentIdx += step;
+	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
+	currentIdx = fmod(currentIdx, 4.0f);
+	static_cast<Sprite3D *>(this->getChildByName("Righttrack"))->setTexture(_trackTextures[(int)currentIdx]);
 }

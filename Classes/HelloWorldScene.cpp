@@ -1,5 +1,9 @@
 #include "HelloWorldScene.h"
 #include "Tank.h"
+#include "M24.h"
+#include "P4F2.h"
+#include "Panther.h"
+#include "Tiger.h"
 #include "OVRRenderer.h"
 #include "PlayerController.h"
 #include "physics3d/CCPhysics3D.h"
@@ -140,7 +144,7 @@ bool HelloWorld::init()
 	//	this->setPhysics3DDebugCamera(camera);
 	//}
 
-	_player = Tank::create();
+	_player = M24::create();
 	_player->setPosition3D(Vec3(0.0f, -50.0f, 120.0f));
 	_player->setCameraMask((unsigned short)CameraFlag::USER1);
 	this->addChild(_player);
@@ -433,7 +437,7 @@ void HelloWorld::playerUpdate(float delta)
 
 void HelloWorld::generateEnemy()
 {
-	_enemy = Tank::create();
+	_enemy = P4F2::create();
 	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
 	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
 	auto tex = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54.png");
@@ -446,6 +450,7 @@ void HelloWorld::generateEnemy()
 	auto sprite = BillBoard::create("target.png");
 	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
 	sprite->setScale(0.05f);
+	sprite->setColor(Color3B::RED);
 	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
 	_enemy->addChild(sprite, 0, TARGET_TAG);
 

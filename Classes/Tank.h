@@ -9,8 +9,6 @@ class Tank : public cocos2d::Sprite3D
 {
 public:
 
-	CREATE_FUNC(Tank);
-
 	virtual bool init();
 	virtual void update(float delta) override;
 
@@ -30,12 +28,15 @@ public:
 	void setHP(float hp);
 	float getHP() const { return _hp; }
 
-private:
+protected:
 
 	Tank();
 	void shotBullet(float speed);
+	void changeLeftTrackTexture(float step);
+	void changeRightTrackTexture(float step);
+	virtual std::string getModelFilePath() = 0;
 
-private:
+protected:
 
 	cocos2d::Vec3 _moveTarget;
 	cocos2d::Node *_cannon;
@@ -50,6 +51,7 @@ private:
 	cocos2d::PUParticleSystem3D *_gunfire;
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;
 	cocos2d::PointLight *_pointLight;
+	cocos2d::Texture2D  *_trackTextures[4];
 };
 
 #endif // __HELLOWORLD_SCENE_H__
