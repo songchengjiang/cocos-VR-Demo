@@ -23,6 +23,7 @@ public:
 	void setTexture(cocos2d::Texture2D *texture);
 	float getCannonStageAngle() const { return _cannonStageAngle; }
 	float getCannonGunAngle() const { return _cannonGunAngle; }
+	float getTurnAngle() const { return _turnAngle; }
 	
 	void setAttackCallback(const cocos2d::Physics3DObject::CollisionCallbackFunc &func) { _callBack = func; }
 
@@ -38,6 +39,7 @@ private:
 
 	cocos2d::Vec3 _moveTarget;
 	cocos2d::Node *_cannon;
+	float _turnAngle;
 	float _cannonStageAngle;
 	float _cannonGunAngle;
 	float _hp;
@@ -47,6 +49,7 @@ private:
 
 	cocos2d::PUParticleSystem3D *_gunfire;
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;
+	cocos2d::PointLight *_pointLight;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

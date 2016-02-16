@@ -7,7 +7,8 @@ class Tank;
 
 enum class PlayerMoveState
 {
-	MOVE,
+	FRONT,
+	BACK,
 	STOP,
 };
 

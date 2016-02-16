@@ -35,6 +35,9 @@ static int register_all_packages()
 }
 
 bool AppDelegate::applicationDidFinishLaunching() {
+
+	Configuration::getInstance()->loadConfigFile("config.plist");
+
     // initialize director
     auto director = Director::getInstance();
     auto glview = director->getOpenGLView();

@@ -91,7 +91,12 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		TANK_ROTATE_ON = true;
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_W) {
-		_moveState = PlayerMoveState::MOVE;
+		_moveState = PlayerMoveState::FRONT;
+		TANK_MOVE_TIME = 0.0f;
+		TANK_MOVE_ON = true;
+	}
+	else if (code == EventKeyboard::KeyCode::KEY_S) {
+		_moveState = PlayerMoveState::BACK;
 		TANK_MOVE_TIME = 0.0f;
 		TANK_MOVE_ON = true;
 	}
@@ -117,10 +122,12 @@ void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
 		TANK_ROTATE_ON = false;
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_W) {
+	if (code == EventKeyboard::KeyCode::KEY_W
+		|| code == EventKeyboard::KeyCode::KEY_S) {
 		//_moveState = PlayerMoveState::STOP;
 		TANK_MOVE_ON = false;
 	}
+
 }
 
 void PlayerController::update(float delta)
@@ -161,9 +168,13 @@ void PlayerController::update(float delta)
 		//_ovrRenderer->setOffsetRot(rot);
 	}
 
-	if (_moveState == PlayerMoveState::MOVE) {
+	if (_moveState == PlayerMoveState::FRONT) {
 		float moveSpeed = TANK_MOVE_TIME * TANK_MOVE_TIME;
 		_player->move(moveSpeed);
+	}
+	else if (_moveState == PlayerMoveState::BACK) {
+		float moveSpeed = TANK_MOVE_TIME * TANK_MOVE_TIME;
+		_player->move(-moveSpeed);
 	}
 
 	if (CONNON_ROTATE_ON)

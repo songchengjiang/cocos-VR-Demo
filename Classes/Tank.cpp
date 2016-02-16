@@ -18,6 +18,7 @@ void recycleSetTexture(Node *node, Texture2D *texture)
 Tank::Tank()
 	: _cannonStageAngle(180.0f)
 	, _cannonGunAngle(0.0f)
+	, _turnAngle(0.0f)
 	, _hp(100.0f)
 	, _latestShootTime(0.0f)
 	, _needUpdateCannonStage(false)
@@ -28,7 +29,7 @@ Tank::Tank()
 
 bool Tank::init()
 {
-	Sprite3D::initWithFile("models/tank/tank.c3b");
+	Sprite3D::initWithFile("models/tanks/M24/M24.c3b");
 	this->setRotation3D(Vec3(0.0f, 0.0f, 0.0f));
 	this->setPosition3D(Vec3::ZERO);
 	this->setScale(1.0f);
@@ -47,10 +48,16 @@ bool Tank::init()
 	componet->syncNodeToPhysics();
 	//componet->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NODE_TO_PHYSICS);
 
+	_cannon = this->getChildByName("turret");
+	_gunfire = PUParticleSystem3D::create("effects/Particle3D/scripts/shot.pu");
+	_gunfire->setRotation3D(Vec3(90.0f, 0.0f, 0.0f));
+	_gunfire->setScale(20.0f);
+	_cannon->getChildByName("cannon")->getChildByName("Firepoint")->addChild(_gunfire);
 
-	_cannon = this->getChildByName("cannon");
-	_gunfire = PUParticleSystem3D::create("effects/Particle3D/scripts/gunfire.pu");
-	_cannon->getChildByName("gun")->getChildByName("gunfire")->addChild(_gunfire);
+	_pointLight = PointLight::create(Vec3::ZERO, Color3B(238, 134, 66), 3.0f);
+	this->addChild(_pointLight);
+	_pointLight->setLightFlag(LightFlag::LIGHT0);
+	_pointLight->setIntensity(0.0f);
 
 	scheduleUpdate();
 	return true;
@@ -62,6 +69,10 @@ bool Tank::shot(float speed)
 		shotBullet(speed);
 		_gunfire->startParticleSystem();
 		_latestShootTime = 0.0f;
+
+		auto mat = this->getWorldToNodeTransform() * _cannon->getChildByName("cannon")->getChildByName("Firepoint")->getNodeToWorldTransform();
+		_pointLight->setPosition3D(Vec3(mat.m[12], mat.m[13], mat.m[14]));
+		_pointLight->setIntensity(10.0f);
 		return true;
 	}
 	return false;
@@ -70,7 +81,7 @@ bool Tank::shot(float speed)
 bool Tank::shot(const Vec3 &target, float speed)
 {
 	float dis = (target - this->getPosition3D()).length();
-	float gunAngle = dis / 14.3f - 6.0f;
+	float gunAngle = dis / 15.0f - 6.0f;
 	rotateCannonGun(gunAngle - _cannonGunAngle);
 
 	Vec3 dir = target - this->getPosition3D();
@@ -113,13 +124,14 @@ bool Tank::move(float force)
 
 void Tank::turn(float torque)
 {
+	_turnAngle += torque;
 	auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(torque));
 	this->setRotationQuat(this->getRotationQuat() * rot);
 }
 
 void Tank::shotBullet(float speed)
 {
-	Mat4 bulletWorldMat = _cannon->getChildByName("gun")->getChildByName("gunfire")->getNodeToWorldTransform();
+	Mat4 bulletWorldMat = _cannon->getChildByName("cannon")->getChildByName("Firepoint")->getNodeToWorldTransform();
 	Vec3 bulletPos;
 	Quaternion bulletRot;
 	bulletWorldMat.decompose(nullptr, &bulletRot, &bulletPos);
@@ -191,8 +203,13 @@ void Tank::update(float delta)
 	}
 
 	if (_needUpdateGunAngle) {
-		auto gun = _cannon->getChildByName("gun");
+		auto gun = _cannon->getChildByName("cannon");
 		gun->setRotation3D(Vec3(-_cannonGunAngle, 0.0f, 0.0f));
 		_needUpdateGunAngle = false;
+	}
+
+	if (0.0f < _pointLight->getIntensity()) {
+		float intensity = _pointLight->getIntensity() - 5.0f * delta;
+		_pointLight->setIntensity(0.0f <= intensity? intensity: 0.0f);
 	}
 }

@@ -27,6 +27,45 @@ material PUMediaPack/Smoke_11
     }
 }
 
+material PUMediaPack/Smoke_01
+{
+    technique
+    {
+        pass
+        {
+            lighting off
+            scene_blend add
+            depth_write off
+
+            texture_unit
+            {
+                texture pump_smoke_01.png
+                tex_address_mode clamp
+            }
+        }
+    }
+}
+
+//-----------------------------------------------------------------------------------------------------------------------
+material PUMediaPack/Flare_01
+{
+    technique
+    {
+        pass
+        {
+            lighting off
+            scene_blend add
+            depth_write off
+
+            texture_unit
+            {
+                texture pump_flare_01.png
+                tex_address_mode clamp
+            }
+        }
+    }
+}
+
 //-----------------------------------------------------------------------------------------------------------------------
 material PUMediaPack/Dirt_11
 {

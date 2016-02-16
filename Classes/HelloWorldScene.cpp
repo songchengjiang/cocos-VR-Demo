@@ -76,8 +76,56 @@ bool HelloWorld::init()
     // create and initialize a label
 
 	//{
-	//	auto camera = Camera::createPerspective(30.0f, visibleSize.width / visibleSize.height, 1.0f, 1000.0f);
-	//	camera->setPosition3D(Vec3(0.0f, 0.0f, 50.0f));
+	//	auto sprite3d = Sprite3D::create("models/tank/tank.c3b");
+	//	sprite3d->setScale(1.0f);
+	//	sprite3d->setRotation3D(Vec3(0.0f, 0.0f, 0.0f));
+	//	sprite3d->setCameraMask((unsigned short)CameraFlag::USER1);
+	//	this->addChild(sprite3d);
+	//}
+
+	//std::string fileName = "models/tanks/P4F2/P4F2.c3b";
+	//std::string texName = "models/tanks/P4F2/P4F2_Track";
+
+	//auto sprite3d = Sprite3D::create(fileName);
+	//sprite3d->setScale(0.03f);
+	//sprite3d->setRotation3D(Vec3(0.0f, 0.0f, 0.0f));
+	//sprite3d->setCameraMask((unsigned short)CameraFlag::USER1);
+	//this->addChild(sprite3d);
+
+	//auto tex0 = TextureCache::getInstance()->addImage(texName + std::string("2.dds"));
+	//auto tex1 = TextureCache::getInstance()->addImage(texName + std::string("3.dds"));
+	//auto tex2 = TextureCache::getInstance()->addImage(texName + std::string("4.dds"));
+	//auto tex3 = TextureCache::getInstance()->addImage(texName + std::string("1.dds"));
+	//Texture2D::TexParams texParams;
+	//texParams.minFilter = GL_LINEAR;
+	//texParams.magFilter = GL_LINEAR;
+	//texParams.wrapS = GL_REPEAT;
+	//texParams.wrapT = GL_REPEAT;
+	//tex0->setTexParameters(texParams);
+	//tex1->setTexParameters(texParams);
+	//tex2->setTexParameters(texParams);
+	//tex3->setTexParameters(texParams);
+
+	//sprite3d->getChildByName("turret")->setRotation3D(Vec3(-90.0f, 90.0f, 0.0f));
+	//sprite3d->runAction(RepeatForever::create(Sequence::create(CallFunc::create([sprite3d, texName]() {
+	//	static Texture2D *trackTexs[4] = { TextureCache::getInstance()->getTextureForKey(texName + std::string("2.dds"))
+	//	, TextureCache::getInstance()->getTextureForKey(texName + std::string("3.dds"))
+	//	, TextureCache::getInstance()->getTextureForKey(texName + std::string("4.dds"))
+	//	, TextureCache::getInstance()->getTextureForKey(texName + std::string("1.dds")) };
+	//	static float speed = 0.0f;
+	//	static unsigned short texIndex = 0;
+	//	if (0.05 < speed) {
+	//		static_cast<Sprite3D *>(sprite3d->getChildByName("Lefttrack"))->setTexture(trackTexs[texIndex]);
+	//		static_cast<Sprite3D *>(sprite3d->getChildByName("Righttrack"))->setTexture(trackTexs[texIndex]);
+	//		speed = 0.0f;
+	//		texIndex = (texIndex + 1) % 4;
+	//	}
+	//	speed += Director::getInstance()->getDeltaTime();
+	//}), nullptr)));
+
+	//{
+	//	auto camera = Camera::createPerspective(30.0f, visibleSize.width / visibleSize.height, 1.0f, 10000.0f);
+	//	camera->setPosition3D(Vec3(0.0f, 0.0f, 10.0f));
 	//	camera->lookAt(Vec3::ZERO);
 	//	camera->setCameraFlag(CameraFlag::USER1);
 	//	this->addChild(camera);
@@ -102,7 +150,7 @@ bool HelloWorld::init()
 
 	auto ovrRenderer = OVRRenderer::create(CameraFlag::USER1);
 	_player->addChild(ovrRenderer);
-	ovrRenderer->setOffsetPos(Vec3(0.0f, 2.7f, 0.0f));
+	ovrRenderer->setOffsetPos(Vec3(0.0f, 3.2f, 0.0f));
 
 	auto pc = PlayerController::create();
 	this->addChild(pc);
@@ -226,6 +274,9 @@ bool HelloWorld::init()
 
 	SimpleAudioEngine::getInstance()->playBackgroundMusic(FileUtils::getInstance()->fullPathForFilename("sound/background.mp3").c_str(), true);
 
+	auto ambient = AmbientLight::create(Color3B::WHITE);
+	this->addChild(ambient);
+
 	scheduleUpdate();
     return true;
 }
@@ -321,7 +372,8 @@ void HelloWorld::enemyTracking(float delta)
 {
 	if (_enemy->getHP() <= 0.0f) return;
 
-	Vec3 deltaDir = _player->getPosition3D() - _enemy->getPosition3D();
+	Vec3 dis = _player->getPosition3D() - _enemy->getPosition3D();
+	Vec3 deltaDir = dis;
 	deltaDir.normalize();
 
 	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
@@ -336,7 +388,7 @@ void HelloWorld::enemyTracking(float delta)
 	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
 	_enemy->move(delta * 3.0f);
 
-	if (_enemy->shot(_player->getPosition3D(), 100.0f)) {
+	if (_enemy->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * (15.0f * (100.0f / dis.length())))) {
 		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
 	}
 }
@@ -367,7 +419,7 @@ void HelloWorld::enemyEscaping(float delta)
 	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
 	_enemy->move(delta * moveSpeed);
 
-	if (_enemy->shot(_player->getPosition3D(), 100.0f)) {
+	if (_enemy->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * 15.0f)) {
 		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
 	}
 }
@@ -385,7 +437,7 @@ void HelloWorld::generateEnemy()
 	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
 	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
 	auto tex = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54.png");
-	_enemy->setTexture(tex);
+	//_enemy->setTexture(tex);
 	_enemy->setCameraMask((unsigned short)CameraFlag::USER1);
 	_enemy->retain();
 	this->addChild(_enemy);
