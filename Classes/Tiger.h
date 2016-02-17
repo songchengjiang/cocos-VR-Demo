@@ -13,11 +13,13 @@ public:
 	virtual bool init() override;
 	virtual void update(float delta) override;
 
+	virtual std::string getModelFilePath() override;
+	virtual std::string getDamagedModelFilePath() override;
+
 protected:
 
 	Tiger();
 
-	virtual std::string getModelFilePath() override;
 };
 
 #endif

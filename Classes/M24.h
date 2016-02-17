@@ -12,11 +12,13 @@ public:
 
 	virtual bool init() override;
 
+	virtual std::string getModelFilePath() override;
+
+	virtual std::string getDamagedModelFilePath() override;
+
 protected:
 
 	M24();
-
-	virtual std::string getModelFilePath() override;
 };
 
 #endif

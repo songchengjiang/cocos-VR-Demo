@@ -34,3 +34,8 @@ std::string P4F2::getModelFilePath()
 {
 	return "models/tanks/P4F2/P4F2.c3b";
 }
+
+std::string P4F2::getDamagedModelFilePath()
+{
+	return "models/tanks/P4F2/P4F2_damaged.c3b";
+}

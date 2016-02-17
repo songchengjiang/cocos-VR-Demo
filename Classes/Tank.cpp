@@ -23,6 +23,7 @@ Tank::Tank()
 	, _latestShootTime(0.0f)
 	, _needUpdateCannonStage(false)
 	, _needUpdateGunAngle(false)
+	, _state(0)
 {
 
 }

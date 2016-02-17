@@ -12,7 +12,7 @@
 USING_NS_CC;
 using namespace CocosDenshion;
 
-#define HP_REDUCE_VALUE 10
+#define HP_REDUCE_VALUE 50
 #define HP_LOWER_LIMIT  50
 
 #define SMOKE_PS_TAG  0x0F
@@ -23,7 +23,7 @@ using namespace CocosDenshion;
 #define ESCAPING  3
 #define DEAD      4
 
-unsigned short ENEMY_STATE = WALKING;
+//unsigned short ENEMY_STATE = WALKING;
 
 Scene* HelloWorld::createScene()
 {
@@ -149,8 +149,9 @@ bool HelloWorld::init()
 	_player->setCameraMask((unsigned short)CameraFlag::USER1);
 	this->addChild(_player);
 
-	_crashTexture = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54_crash.png");
-	generateEnemy();
+	generateEnemy(Vec3(0.0f, -50.0f, -120.0f), Color3B::RED, 0);
+	generateEnemy(Vec3(120.0f, -50.0f, 0.0f), Color3B::GREEN, 1);
+	generateEnemy(Vec3(-120.0f, -50.0f, 0.0f), Color3B::BLUE, 2);
 
 	auto ovrRenderer = OVRRenderer::create(CameraFlag::USER1);
 	_player->addChild(ovrRenderer);
@@ -227,51 +228,60 @@ bool HelloWorld::init()
 			ps->setCameraMask((unsigned short)CameraFlag::USER1);
 			this->addChild(ps);
 
-			_enemy->setHP(_enemy->getHP() - HP_REDUCE_VALUE);
+			auto enemy = static_cast<Tank *>(ci.objB->getUserData());
 
-			if (_enemy->getHP() <= HP_LOWER_LIMIT) {
-				if (!_enemy->getChildByTag(SMOKE_PS_TAG)) {
-					auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
-					smoke->setScale(0.05f);
-					smoke->startParticleSystem();
-					smoke->setCameraMask(_enemy->getCameraMask());
-					_enemy->addChild(smoke, 0, SMOKE_PS_TAG);
+			enemy->setHP(enemy->getHP() - HP_REDUCE_VALUE);
 
-					_enemy->setTexture(_crashTexture);
-				}
-			}
+			//if (_enemy->getHP() <= HP_LOWER_LIMIT) {
+			//	if (!_enemy->getChildByTag(SMOKE_PS_TAG)) {
+			//		auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
+			//		smoke->setScale(0.05f);
+			//		smoke->startParticleSystem();
+			//		smoke->setCameraMask(_enemy->getCameraMask());
+			//		_enemy->addChild(smoke, 0, SMOKE_PS_TAG);
 
-			if (_enemy->getHP() == 0) {
-				auto enemy = _enemy;
-				_enemy->runAction(Sequence::create(DelayTime::create(1.0f), CallFunc::create([enemy]() {
-					enemy->removeFromParent();
-				}), nullptr));
+			//		_enemy->setTexture(_crashTexture);
+			//	}
+			//}
 
+			if (enemy->getHP() == 0.0f) {
 				auto explosion = PUParticleSystem3D::create("effects/Particle3D/scripts/explosionSystem.pu");
 				explosion->setScale(5.0f);
 				explosion->startParticleSystem();
-				explosion->setCameraMask(_enemy->getCameraMask());
-				explosion->setPosition3D(_enemy->getPosition3D());
+				explosion->setCameraMask(enemy->getCameraMask());
+				explosion->setPosition3D(enemy->getPosition3D());
 				this->addChild(explosion);
 				explosion->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([explosion]() {
 					explosion->removeFromParent();
 				}), nullptr));
 
-				this->runAction(Sequence::create(DelayTime::create(6.0f), CallFunc::create([this]() {
-					this->generateEnemy();
-					this->scheduleUpdate();
+				//this->runAction(Sequence::create(DelayTime::create(6.0f), CallFunc::create([this]() {
+				//	this->generateEnemy();
+				//	this->scheduleUpdate();
+				//}), nullptr));
+				enemy->runAction(Sequence::create(DelayTime::create(1.0f), CallFunc::create([this, enemy]() {
+					auto enemy_damaged = Sprite3D::create(enemy->getDamagedModelFilePath());
+					enemy_damaged->setCameraMask(enemy->getCameraMask());
+					enemy_damaged->setPosition3D(enemy->getPosition3D());
+					enemy_damaged->setRotationQuat(enemy->getRotationQuat());
+					enemy_damaged->setScale(enemy->getScale());
+					this->addChild(enemy_damaged);
+					enemy_damaged->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([enemy_damaged]() {
+						enemy_damaged->removeFromParent();
+					}), nullptr));
+					this->removeEnemy(enemy);
 				}), nullptr));
 
 				SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/boom.mp3").c_str());
-				this->unscheduleUpdate();
 			}
 
 			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/metal_crash1.mp3").c_str());
 		}
+
 		//CCLOG("(%f, %f, %f)", ci.collisionPointList[0].worldPositionOnB.x, ci.collisionPointList[0].worldPositionOnB.y, ci.collisionPointList[0].worldPositionOnB.z);
-		if (_enemy) {
-			if ((ci.collisionPointList[0].worldPositionOnB - _enemy->getPosition3D()).length() < 10.0f) {
-				ENEMY_STATE = TRACKING;
+		for (auto &enemy : _enemyList) {
+			if ((ci.collisionPointList[0].worldPositionOnB - enemy.tank->getPosition3D()).length() < 10.0f) {
+				enemy.tank->setState(TRACKING);
 			}
 		}
 	});
@@ -297,90 +307,82 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 
 void HelloWorld::update(float delta)
 {
-	Vec3 safeDis = _player->getPosition3D() - _enemy->getPosition3D();
-	if (safeDis.length() < 50.0f) {
-		_enemy->getChildByTag(TARGET_TAG)->setVisible(false);
-	}
-	else {
-		_enemy->getChildByTag(TARGET_TAG)->setVisible(true);
-	}
 	enemyAI(delta);
 }
 
 void HelloWorld::enemyAI(float delta)
 {
-	if (_enemy->getHP() <= 50.0f) {
-		ENEMY_STATE = ESCAPING;
-	}
+	for (auto &enemy : _enemyList) {
+		Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
+		if (safeDis.length() < 50.0f) {
+			enemy.tank->getChildByTag(TARGET_TAG)->setVisible(false);
+		}
+		else {
+			enemy.tank->getChildByTag(TARGET_TAG)->setVisible(true);
+		}
 
-	switch (ENEMY_STATE)
-	{
-	case WALKING:
-		enemyWalking(delta);
-		break;
+		switch (enemy.tank->getState())
+		{
+		case WALKING:
+			enemyWalking(enemy, delta);
+			break;
 
-	case TRACKING:
-		enemyTracking(delta);
-		break;
+		case TRACKING:
+			enemyTracking(enemy, delta);
+			break;
 
-	case ESCAPING:
-		enemyEscaping(delta);
-		break;
+		case ESCAPING:
+			enemyEscaping(enemy, delta);
+			break;
 
-	case DEAD:
-		CCLOG("MISSION COMPLETE!");
-		break;
-
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 }
 
-void HelloWorld::enemyWalking(float delta)
+void HelloWorld::enemyWalking(TankState &enemy, float delta)
 {
-	if (_enemy->getHP() <= 0.0f) return;
-	static bool needChangeDir = false;
-	static float moveTime = 0.0f;
-	static float randomAngle = 0.0f;
+	if (enemy.tank->getHP() <= 0.0f) return;
 
-	moveTime -= delta;
-	if (moveTime <= 0.0f) {
-		moveTime = CCRANDOM_0_1() * 50.0f + 50.0f;
-		needChangeDir = true;
+	enemy.moveTime -= delta;
+	if (enemy.moveTime <= 0.0f) {
+		enemy.moveTime = CCRANDOM_0_1() * 50.0f + 50.0f;
+		enemy.needChangeDir = true;
 	}
 
-	if (needChangeDir) {
-		randomAngle = 2.0;
-		needChangeDir = false;
+	if (enemy.needChangeDir) {
+		enemy.randomAngle = 2.0;
+		enemy.needChangeDir = false;
 	}
 
-	if (0.0f < abs(randomAngle)) {
-		_enemy->turn(randomAngle);
-		float latestAngle = randomAngle;
-		randomAngle -= delta * randomAngle;
-		if (latestAngle * randomAngle < 0.0)
-			randomAngle = 0.0f;
+	if (0.0f < abs(enemy.randomAngle)) {
+		enemy.tank->turn(enemy.randomAngle);
+		float latestAngle = enemy.randomAngle;
+		enemy.randomAngle -= delta * enemy.randomAngle;
+		if (latestAngle * enemy.randomAngle < 0.0)
+			enemy.randomAngle = 0.0f;
 	}
 
-	if (!_enemy->move(delta * 3.0f)) {
-		needChangeDir = true;
+	if (!enemy.tank->move(delta * 3.0f)) {
+		enemy.needChangeDir = true;
 	}
 
-	Vec3 safeDis = _player->getPosition3D() - _enemy->getPosition3D();
+	Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
 	if (safeDis.length() < 50.0f) {
-		ENEMY_STATE = TRACKING;
+		enemy.tank->setState(TRACKING);
 	}
 }
 
-void HelloWorld::enemyTracking(float delta)
+void HelloWorld::enemyTracking(TankState &enemy, float delta)
 {
-	if (_enemy->getHP() <= 0.0f) return;
+	if (enemy.tank->getHP() <= 0.0f) return;
 
-	Vec3 dis = _player->getPosition3D() - _enemy->getPosition3D();
+	Vec3 dis = _player->getPosition3D() - enemy.tank->getPosition3D();
 	Vec3 deltaDir = dis;
 	deltaDir.normalize();
 
-	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
+	Vec3 enemydir = enemy.tank->getRotationQuat() * -Vec3::UNIT_Z;
 	enemydir.normalize();
 
 	float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
@@ -389,22 +391,22 @@ void HelloWorld::enemyTracking(float delta)
 	if (up.y < 0.0)
 		theta = -theta;
 
-	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
-	_enemy->move(delta * 3.0f);
+	enemy.tank->turn(delta * CC_RADIANS_TO_DEGREES(theta));
+	enemy.tank->move(delta * 3.0f);
 
-	if (_enemy->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * (15.0f * (100.0f / dis.length())))) {
+	if (enemy.tank->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * (15.0f * (100.0f / dis.length())))) {
 		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
 	}
 }
 
-void HelloWorld::enemyEscaping(float delta)
+void HelloWorld::enemyEscaping(TankState &enemy, float delta)
 {
-	if (_enemy->getHP() <= 0.0f) return;
+	if (enemy.tank->getHP() <= 0.0f) return;
 
-	Vec3 deltaDir = _enemy->getPosition3D() - _player->getPosition3D();
+	Vec3 deltaDir = enemy.tank->getPosition3D() - _player->getPosition3D();
 	deltaDir.normalize();
 
-	Vec3 enemydir = _enemy->getRotationQuat() * -Vec3::UNIT_Z;
+	Vec3 enemydir = enemy.tank->getRotationQuat() * -Vec3::UNIT_Z;
 	enemydir.normalize();
 
 	float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
@@ -414,16 +416,16 @@ void HelloWorld::enemyEscaping(float delta)
 		theta = -theta;
 
 	static float moveSpeed = 3.0f;
-	if (_enemy->getHP() <= 50.0f && 30.0 < _enemy->getHP()) {
+	if (enemy.tank->getHP() <= 50.0f && 30.0 < enemy.tank->getHP()) {
 		moveSpeed = 2.0f;
 	}
-	else if (_enemy->getHP() <= 30.0f) {
+	else if (enemy.tank->getHP() <= 30.0f) {
 		moveSpeed = 1.0f;
 	}
-	_enemy->turn(delta * CC_RADIANS_TO_DEGREES(theta));
-	_enemy->move(delta * moveSpeed);
+	enemy.tank->turn(delta * CC_RADIANS_TO_DEGREES(theta));
+	enemy.tank->move(delta * moveSpeed);
 
-	if (_enemy->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * 15.0f)) {
+	if (enemy.tank->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * 15.0f)) {
 		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
 	}
 }
@@ -435,27 +437,37 @@ void HelloWorld::playerUpdate(float delta)
 	}
 }
 
-void HelloWorld::generateEnemy()
+void HelloWorld::generateEnemy(const cocos2d::Vec3 &pos, const Color3B &col, unsigned short type)
 {
-	_enemy = P4F2::create();
-	_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
-	_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
-	auto tex = Director::getInstance()->getTextureCache()->addImage("models/tank/TexturesMods/Berezka/T-54.png");
-	//_enemy->setTexture(tex);
-	_enemy->setCameraMask((unsigned short)CameraFlag::USER1);
-	_enemy->retain();
-	this->addChild(_enemy);
+	Tank *enemy = nullptr;
+	if (type == 0) {
+		enemy = P4F2::create();
+	}
+	else if (type == 1) {
+		enemy = Panther::create();
+	}
+	else if (type == 2) {
+		enemy = Tiger::create();
+	}
+	if (!enemy) return;
+	//_enemy->setPosition3D(Vec3(0.0f, -50.0f, -120.0f));
+	//_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
+	enemy->setPosition3D(pos);
+	enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
+	enemy->setCameraMask((unsigned short)CameraFlag::USER1);
+	enemy->retain();
+	this->addChild(enemy);
 
 
 	auto sprite = BillBoard::create("target.png");
 	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
 	sprite->setScale(0.05f);
-	sprite->setColor(Color3B::RED);
+	sprite->setColor(col);
 	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
-	_enemy->addChild(sprite, 0, TARGET_TAG);
+	enemy->addChild(sprite, 0, TARGET_TAG);
 
 
-	_enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
+	enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
 		if (ci.objB == _terrainCollider) {
 			PUParticleSystem3D *ps = PUParticleSystem3D::create("effects/Particle3D/scripts/dirtExplosion.pu");
 			ps->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([ps]() {
@@ -485,5 +497,17 @@ void HelloWorld::generateEnemy()
 		}
 	});
 
-	ENEMY_STATE = WALKING;
+	enemy->setState(WALKING);
+	_enemyList.push_back({enemy, 0.0f, 0.0f, false});
+}
+
+void HelloWorld::removeEnemy(Tank *enemy)
+{
+	enemy->removeFromParent();
+	for (std::vector<TankState>::iterator iter = _enemyList.begin(); iter != _enemyList.end(); ++iter) {
+		if (iter->tank == enemy) {
+			_enemyList.erase(iter);
+			return;
+		}
+	}
 }

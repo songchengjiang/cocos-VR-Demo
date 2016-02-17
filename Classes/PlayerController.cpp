@@ -7,11 +7,11 @@ USING_NS_CC;
 using namespace CocosDenshion;
 
 #define CANNON_STAGE_ROTATE_SPEED     2.0f
-#define CANNON_STAGE_MAX_ROTATE_SPEED 1.0f
+#define CANNON_STAGE_MAX_ROTATE_SPEED 1.5f
 #define CANNON_GUN_ROTATE_SPEED       3.0f
 #define CANNON_GUN_MAX_ROTATE_SPEED   0.3f
 #define TANK_MOVE_SPEED           0.2f
-#define TANK_MAX_MOVE_SPEED       0.3f
+#define TANK_MAX_MOVE_SPEED       0.4f
 
 //#define TANK_MOVE_FORCE           5.0f
 //#define TANK_TURN_TORQUE          45.0f
@@ -158,6 +158,8 @@ void PlayerController::update(float delta)
 		//_player->setRotationQuat(_player->getRotationQuat() * rot);
 		float angle = TANK_ROTATE_TIME * TANK_ROTATE_TIME;
 		_player->turn(angle);
+		_player->rotateCannonStage(-angle);
+		_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-angle)));
 		//_ovrRenderer->setOffsetRot(rot);
 	}
 	else if (_rotateState == PlayerRotateState::TURN_RIGHT) {
@@ -165,6 +167,8 @@ void PlayerController::update(float delta)
 		//_player->setRotationQuat(_player->getRotationQuat() * rot);
 		float angle = TANK_ROTATE_TIME * TANK_ROTATE_TIME;
 		_player->turn(-angle);
+		_player->rotateCannonStage(angle);
+		_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(angle)));
 		//_ovrRenderer->setOffsetRot(rot);
 	}
 

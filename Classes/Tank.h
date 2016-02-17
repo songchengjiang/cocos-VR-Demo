@@ -28,13 +28,18 @@ public:
 	void setHP(float hp);
 	float getHP() const { return _hp; }
 
+	void setState(unsigned short state) { _state = state; }
+	unsigned short getState() const { return _state; }
+
+	virtual std::string getModelFilePath() = 0;
+	virtual std::string getDamagedModelFilePath() = 0;
+
 protected:
 
 	Tank();
 	void shotBullet(float speed);
 	void changeLeftTrackTexture(float step);
 	void changeRightTrackTexture(float step);
-	virtual std::string getModelFilePath() = 0;
 
 protected:
 
@@ -47,6 +52,7 @@ protected:
 	float _latestShootTime;
 	bool  _needUpdateCannonStage;
 	bool  _needUpdateGunAngle;
+	unsigned short _state;
 
 	cocos2d::PUParticleSystem3D *_gunfire;
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;

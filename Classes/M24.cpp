@@ -34,3 +34,8 @@ std::string M24::getModelFilePath()
 {
 	return "models/tanks/M24/M24.c3b";
 }
+
+std::string M24::getDamagedModelFilePath()
+{
+	return "models/tanks/M24/M24_damaged.c3b";
+}

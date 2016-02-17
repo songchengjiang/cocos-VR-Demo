@@ -34,3 +34,8 @@ std::string Panther::getModelFilePath()
 {
 	return "models/tanks/Panther/Panther.c3b";
 }
+
+std::string Panther::getDamagedModelFilePath()
+{
+	return "models/tanks/Panther/Panther_damaged.c3b";
+}

@@ -56,3 +56,8 @@ std::string Tiger::getModelFilePath()
 {
 	return "models/tanks/Tiger/Tiger.c3b";
 }
+
+std::string Tiger::getDamagedModelFilePath()
+{
+	return "models/tanks/Tiger/Tiger_damaged.c3b";
+}

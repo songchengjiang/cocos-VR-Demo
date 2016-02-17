@@ -21,20 +21,28 @@ public:
 
 private:
 
-	void generateEnemy();
+	struct TankState
+	{
+		Tank *tank;
+		float moveTime;
+		float randomAngle;
+		bool needChangeDir;
+	};
+
+	void generateEnemy(const cocos2d::Vec3 &pos, const cocos2d::Color3B &col, unsigned short type);
 
 	void playerUpdate(float delta);
 	void enemyAI(float delta);
-	void enemyWalking(float delta);
-	void enemyTracking(float delta);
-	void enemyEscaping(float delta);
+	void enemyWalking(TankState &enemy, float delta);
+	void enemyTracking(TankState &enemy, float delta);
+	void enemyEscaping(TankState &enemy, float delta);
+	void removeEnemy(Tank *enemy);
 
 private:
 
-	Tank *_enemy;
+	std::vector<TankState> _enemyList;
 	Tank *_player;
 	cocos2d::Physics3DCollider *_terrainCollider;
-	cocos2d::Texture2D *_crashTexture;
 };
 
 #endif // __HELLOWORLD_SCENE_H__
