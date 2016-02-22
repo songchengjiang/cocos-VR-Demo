@@ -54,6 +54,9 @@ protected:
 	bool  _needUpdateGunAngle;
 	unsigned short _state;
 
+	bool  _shotDampingMotion;
+	float _shotDampingTime;
+
 	cocos2d::PUParticleSystem3D *_gunfire;
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;
 	cocos2d::PointLight *_pointLight;

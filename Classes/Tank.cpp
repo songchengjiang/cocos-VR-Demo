@@ -24,6 +24,8 @@ Tank::Tank()
 	, _needUpdateCannonStage(false)
 	, _needUpdateGunAngle(false)
 	, _state(0)
+	, _shotDampingMotion(false)
+	, _shotDampingTime(0.0f)
 {
 
 }
@@ -55,7 +57,7 @@ bool Tank::init()
 	_gunfire->setScale(20.0f);
 	_cannon->getChildByName("cannon")->getChildByName("Firepoint")->addChild(_gunfire);
 
-	_pointLight = PointLight::create(Vec3::ZERO, Color3B(238, 134, 66), 3.0f);
+	_pointLight = PointLight::create(Vec3::ZERO, Color3B(230, 136, 74), 10.0f);
 	this->addChild(_pointLight);
 	_pointLight->setLightFlag(LightFlag::LIGHT0);
 	_pointLight->setIntensity(0.0f);
@@ -73,7 +75,10 @@ bool Tank::shot(float speed)
 
 		auto mat = this->getWorldToNodeTransform() * _cannon->getChildByName("cannon")->getChildByName("Firepoint")->getNodeToWorldTransform();
 		_pointLight->setPosition3D(Vec3(mat.m[12], mat.m[13], mat.m[14]));
-		_pointLight->setIntensity(10.0f);
+		_pointLight->setIntensity(5.0f);
+
+		_shotDampingMotion = true;
+		_shotDampingTime = 0.0f;
 		return true;
 	}
 	return false;
@@ -214,8 +219,29 @@ void Tank::update(float delta)
 	}
 
 	if (0.0f < _pointLight->getIntensity()) {
-		float intensity = _pointLight->getIntensity() - 5.0f * delta;
+		float intensity = _pointLight->getIntensity() - 2.5f * delta;
 		_pointLight->setIntensity(0.0f <= intensity? intensity: 0.0f);
+	}
+
+	if (_shotDampingMotion) {
+		static const float PI = 3.1415926f;
+		static float A = 0.05f;
+		static float beta = 0.6f;
+		static float w0 = PI / 4.0f;
+		static float w = sqrt(w0 * w0 - beta * beta);
+		static float alpha = 0.0f;
+		float x = A * exp(-beta * _shotDampingTime) * cos(w * _shotDampingTime + alpha);
+
+		auto rot = this->getRotationQuat() * Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(_cannonStageAngle - 180.0f));
+
+		Vec3 requestPos = this->getPosition3D() + rot * Vec3(0.0f, 0.0f, x);
+		if (requestPos.length() < MOVE_AREA_RADIUS) {
+			this->setPosition3D(requestPos);
+		}
+		_shotDampingTime += delta * 5.0f;
+		if (abs(x) < 0.01f) {
+			_shotDampingMotion = false;
+		}
 	}
 }
 
@@ -223,8 +249,8 @@ void Tank::changeLeftTrackTexture(float step)
 {
 	static float currentIdx = 0.0f;
 	currentIdx += step;
-	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
 	currentIdx = fmod(currentIdx, 4.0f);
+	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
 	static_cast<Sprite3D *>(this->getChildByName("Lefttrack"))->setTexture(_trackTextures[(int)currentIdx]);
 }
 
@@ -232,7 +258,7 @@ void Tank::changeRightTrackTexture(float step)
 {
 	static float currentIdx = 0.0f;
 	currentIdx += step;
-	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
 	currentIdx = fmod(currentIdx, 4.0f);
+	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
 	static_cast<Sprite3D *>(this->getChildByName("Righttrack"))->setTexture(_trackTextures[(int)currentIdx]);
 }
