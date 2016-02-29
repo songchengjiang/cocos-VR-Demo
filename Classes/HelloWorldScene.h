@@ -42,7 +42,7 @@ private:
 
 	std::vector<TankState> _enemyList;
 	Tank *_player;
-	cocos2d::Physics3DCollider *_terrainCollider;
+	cocos2d::Physics3DObject *_terrainCollider;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

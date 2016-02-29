@@ -4,15 +4,20 @@
 #include "P4F2.h"
 #include "Panther.h"
 #include "Tiger.h"
+#if CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
 #include "OVRRenderer.h"
+#elif CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
+#include "OVRRenderer-android.h"
+#endif
 #include "PlayerController.h"
 #include "physics3d/CCPhysics3D.h"
+#include "3d/CCBundle3D.h"
 #include "SimpleAudioEngine.h"
 
 USING_NS_CC;
 using namespace CocosDenshion;
 
-#define HP_REDUCE_VALUE 50
+#define HP_REDUCE_VALUE 10
 #define HP_LOWER_LIMIT  50
 
 #define SMOKE_PS_TAG  0x0F
@@ -137,21 +142,21 @@ bool HelloWorld::init()
 
 	//{
 	//	auto camera = Camera::createPerspective(30.0f, visibleSize.width / visibleSize.height, 1.0f, 5000.0f);
-	//	camera->setPosition3D(Vec3(10.0f, -50.0f, -3.0f));
-	//	camera->lookAt(Vec3(0.0f, -50.0f, -3.0f));
+	//	camera->setPosition3D(Vec3(0.0, 400.0f, 400.0f));
+	//	camera->lookAt(Vec3(0.0f, 0.0f, 0.0f));
 	//	camera->setCameraFlag(CameraFlag::USER1);
 	//	this->addChild(camera);
 	//	this->setPhysics3DDebugCamera(camera);
 	//}
 
 	_player = M24::create();
-	_player->setPosition3D(Vec3(0.0f, -50.0f, 120.0f));
+	_player->setPosition3D(Vec3(0.0f, 0.0f, 120.0f));
 	_player->setCameraMask((unsigned short)CameraFlag::USER1);
 	this->addChild(_player);
 
-	generateEnemy(Vec3(0.0f, -50.0f, -120.0f), Color3B::RED, 0);
-	generateEnemy(Vec3(120.0f, -50.0f, 0.0f), Color3B::GREEN, 1);
-	generateEnemy(Vec3(-120.0f, -50.0f, 0.0f), Color3B::BLUE, 2);
+	generateEnemy(Vec3(0.0f, 0.0f, -120.0f), Color3B::RED, 0);
+	generateEnemy(Vec3(120.0f, 0.0f, 0.0f), Color3B::GREEN, 1);
+	generateEnemy(Vec3(-120.0f, 0.0f, 0.0f), Color3B::BLUE, 2);
 
 	auto ovrRenderer = OVRRenderer::create(CameraFlag::USER1);
 	_player->addChild(ovrRenderer);
@@ -167,30 +172,49 @@ bool HelloWorld::init()
 	skybox->setScale(1000.0f);
 	this->addChild(skybox);
 
-	Terrain::DetailMap r("models/terrain/dirt.jpg"), g("models/terrain/Grass2.jpg"), b("models/terrain/rock.png"), a("models/terrain/snow.png");
+	//Terrain::DetailMap r("models/terrain/dirt.jpg"), g("models/terrain/Grass2.jpg"), b("models/terrain/rock.png"), a("models/terrain/snow.png");
 
-	Terrain::TerrainData data("models/terrain/terrain.png", "models/terrain/alphamap.png", r, g, b, a);
-	data._mapHeight = 100.0;
-	data._mapScale = 1.0f;
+	//Terrain::TerrainData data("models/terrain/terrain.png", "models/terrain/alphamap.png", r, g, b, a);
+	//data._mapHeight = 100.0;
+	//data._mapScale = 1.0f;
 
-	auto terrain = Terrain::create(data, Terrain::CrackFixedType::SKIRT);
-	terrain->setLODDistance(3.2f, 6.4f, 9.6f);
-	terrain->setMaxDetailMapAmount(4);
-	this->addChild(terrain);
-	terrain->setCameraMask((unsigned short)CameraFlag::USER1);
-	terrain->setDrawWire(false);
-	terrain->setLightDir(-Vec3::UNIT_Y);
+	//auto terrain = Terrain::create(data, Terrain::CrackFixedType::SKIRT);
+	//terrain->setLODDistance(3.2f, 6.4f, 9.6f);
+	//terrain->setMaxDetailMapAmount(4);
+	//this->addChild(terrain);
+	//terrain->setCameraMask((unsigned short)CameraFlag::USER1);
+	//terrain->setDrawWire(false);
+	//terrain->setLightDir(-Vec3::UNIT_Y);
 
-	std::vector<float> heidata = terrain->getHeightData();
-	auto size = terrain->getTerrainSize();
-	Physics3DColliderDes colliderDes;
-	colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
-	_terrainCollider = Physics3DCollider::create(&colliderDes);
+	//std::vector<float> heidata = terrain->getHeightData();
+	//auto size = terrain->getTerrainSize();
+	//Physics3DColliderDes colliderDes;
+	//colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
+	//_terrainCollider = Physics3DCollider::create(&colliderDes);
+	//auto component = Physics3DComponent::create(_terrainCollider);
+	//terrain->addComponent(component);
+	//component->syncNodeToPhysics();
+	//component->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
+
+	float scale = 1.0f;
+	std::vector<Vec3> trianglesList = Bundle3D::getTrianglesList("models/terrain/terrain.c3b");
+	for (auto& it : trianglesList) {
+		it *= scale;
+		it -= Vec3(0.0f, 0.0f, 4.0f);
+	}
+
+	Physics3DRigidBodyDes rbDes;
+	rbDes.mass = 0.0f;
+	rbDes.shape = Physics3DShape::createMesh(&trianglesList[0], (int)trianglesList.size() / 3);
+	_terrainCollider = Physics3DRigidBody::create(&rbDes);
 	auto component = Physics3DComponent::create(_terrainCollider);
+	auto terrain = Sprite3D::create("models/terrain/terrain.c3b");
 	terrain->addComponent(component);
-	component->syncNodeToPhysics();
-	component->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
-
+	terrain->setRotation3D(Vec3(-90.0f, 0.0f, 0.0f));
+	terrain->setPosition3D(Vec3(0.0f, 2.0f, 0.0f));
+	terrain->setScale(scale);
+	terrain->setCameraMask((unsigned short)CameraFlag::USER1);
+	this->addChild(terrain);
 
 	//Physics3DRigidBodyDes rbDes;
 	//rbDes.mass = 10.0f;
