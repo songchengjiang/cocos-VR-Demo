@@ -169,6 +169,7 @@ public class Cocos2dxHelper {
     private static native void nativeSetEditTextDialogResult(final byte[] pBytes);
 
     private static native void nativeSetContext(final Context pContext, final AssetManager pAssetManager);
+	public static native void nativeSetActivity(final Activity pActivity);
 
     public static String getCocos2dxPackageName() {
         return Cocos2dxHelper.sPackageName;

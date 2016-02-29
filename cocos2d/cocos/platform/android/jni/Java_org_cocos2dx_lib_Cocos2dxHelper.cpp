@@ -43,6 +43,8 @@ THE SOFTWARE.
 static EditTextCallback s_editTextCallback = nullptr;
 static void* s_ctx = nullptr;
 
+void cocos_android_app_onCreate(JavaVM *vm, JNIEnv* env, jobject activity) __attribute__((weak));
+
 using namespace cocos2d;
 using namespace std;
 
@@ -58,6 +60,10 @@ extern "C" {
         JniHelper::setClassLoaderFrom(context);
         FileUtilsAndroid::setassetmanager(AAssetManager_fromJava(env, assetManager));
     }
+
+	JNIEXPORT void JNICALL Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetActivity(JNIEnv*  env, jobject thiz, jobject activity) {
+		cocos_android_app_onCreate(JniHelper::getJavaVM(), env, activity);
+	}
 
     JNIEXPORT void JNICALL Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetEditTextDialogResult(JNIEnv * env, jobject obj, jbyteArray text) {
         jsize  size = env->GetArrayLength(text);

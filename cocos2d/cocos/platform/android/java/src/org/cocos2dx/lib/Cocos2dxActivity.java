@@ -212,7 +212,8 @@ public abstract class Cocos2dxActivity extends Activity implements Cocos2dxHelpe
                     EGL10.EGL_ALPHA_SIZE, configAttribs[3],
                     EGL10.EGL_DEPTH_SIZE, configAttribs[4],
                     EGL10.EGL_STENCIL_SIZE,configAttribs[5],
-                    EGL10.EGL_RENDERABLE_TYPE, 4, //EGL_OPENGL_ES2_BIT
+                    EGL10.EGL_RENDERABLE_TYPE, 64, //EGL_OPENGL_ES2_BIT
+					EGL10.EGL_SURFACE_TYPE, EGL10.EGL_WINDOW_BIT | EGL10.EGL_PBUFFER_BIT,
                     EGL10.EGL_NONE
             };
             EGLConfig[] configs = new EGLConfig[1];
@@ -225,7 +226,7 @@ public abstract class Cocos2dxActivity extends Activity implements Cocos2dxHelpe
 
             // there's no config match the specific configAttribs, we should choose a closest one
             int[] EGLV2attribs = {
-                    EGL10.EGL_RENDERABLE_TYPE, 4, //EGL_OPENGL_ES2_BIT
+                    EGL10.EGL_RENDERABLE_TYPE, 64, //EGL_OPENGL_ES2_BIT
                     EGL10.EGL_NONE
             };
             eglChooseResult = egl.eglChooseConfig(display, EGLV2attribs, null, 0, numConfigs);
@@ -324,6 +325,7 @@ public abstract class Cocos2dxActivity extends Activity implements Cocos2dxHelpe
 
         Window window = this.getWindow();
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN);
+		Cocos2dxHelper.nativeSetActivity(this);
     }
 
     //native method,call GLViewImpl::getGLContextAttrs() to get the OpenGL ES context attributions

@@ -838,7 +838,7 @@ void Renderer::drawBatchedTriangles()
 
         // option 3: orphaning + glMapBuffer
         glBufferData(GL_ARRAY_BUFFER, sizeof(_verts[0]) * _filledVertex, nullptr, GL_DYNAMIC_DRAW);
-        void *buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        void *buf = glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(_verts[0]) * _filledVertex, GL_MAP_WRITE_BIT);
         memcpy(buf, _verts, sizeof(_verts[0])* _filledVertex);
         glUnmapBuffer(GL_ARRAY_BUFFER);
 
@@ -946,7 +946,7 @@ void Renderer::drawBatchedQuads()
         
         // option 3: orphaning + glMapBuffer
         glBufferData(GL_ARRAY_BUFFER, sizeof(_quadVerts[0]) * _numberQuads * 4, nullptr, GL_DYNAMIC_DRAW);
-        void *buf = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
+        void *buf = glMapBufferRange(GL_ARRAY_BUFFER, 0, sizeof(_quadVerts[0]) * _numberQuads * 4, GL_MAP_WRITE_BIT);
         memcpy(buf, _quadVerts, sizeof(_quadVerts[0])* _numberQuads * 4);
         glUnmapBuffer(GL_ARRAY_BUFFER);
         

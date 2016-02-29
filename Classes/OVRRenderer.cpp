@@ -86,7 +86,7 @@ bool OVRRenderer::init(cocos2d::CameraFlag flag)
 		this->addChild(_eyeCamera[eye]);
 	}
 
-	this->setCameraMask((unsigned short)CameraFlag::USER1);
+	this->setCameraMask((unsigned short)flag);
 	_ld.Header.Type  = ovrLayerType_EyeFov;
 	_ld.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;   // Because OpenGL.
 

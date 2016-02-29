@@ -1,6 +1,7 @@
 #ifndef __CONTROLLER_H__
 #define __CONTROLLER_H__
 #include "cocos2d.h"
+#include "base/CCController.h"
 
 class OVRRenderer;
 class Tank;
@@ -52,6 +53,9 @@ private:
 	bool init();
 	void onKeyPressed(cocos2d::EventKeyboard::KeyCode code, cocos2d::Event *event);
 	void onKeyReleased(cocos2d::EventKeyboard::KeyCode code, cocos2d::Event *event);
+
+	void onControllerKeyPressed(cocos2d::Controller *controller, int key, cocos2d::Event *event);
+	void onControllerKeyReleased(cocos2d::Controller *controller, int key, cocos2d::Event *event);
 
 private:
 

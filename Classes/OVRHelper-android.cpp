@@ -1,4 +1,4 @@
-#include "OVRHelper.h"
+#include "OVRHelper-android.h"
 
 ovrJava OVRHelper::java;
 

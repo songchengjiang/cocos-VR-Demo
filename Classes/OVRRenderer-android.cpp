@@ -1,4 +1,4 @@
-#include "OVRRenderer.h"
+#include "OVRRenderer-android.h"
 #include "platform/android/jni/JniHelper.h"
 
 USING_NS_CC;
@@ -135,7 +135,7 @@ bool OVRRenderer::init(cocos2d::CameraFlag flag)
 	);
 	Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(foregroundToBackListener, -1);
 
-
+	this->setCameraMask((unsigned short)flag);
 	update(0.0f);
 	scheduleUpdate();
 	return true;

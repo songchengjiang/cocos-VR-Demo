@@ -1,7 +1,12 @@
 #include "PlayerController.h"
+#if CC_TARGET_PLATFORM == CC_PLATFORM_WIN32
 #include "OVRRenderer.h"
+#elif CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
+#include "OVRRenderer-android.h"
+#endif
 #include "Tank.h"
 #include "SimpleAudioEngine.h"
+#include "base/CCEventListenerController.h"
 
 USING_NS_CC;
 using namespace CocosDenshion;
@@ -73,7 +78,7 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		GUN_ROTATE_ON = true;
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_SPACE) {
+	if (code == EventKeyboard::KeyCode::KEY_SPACE || code == EventKeyboard::KeyCode::KEY_DPAD_CENTER) {
 		//_cannonState = CannonState::SHOT;
 		if (_player->shot(TANK_BULLET_SPEED)) {
 			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/player_shot.mp3").c_str());
@@ -100,6 +105,8 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		TANK_MOVE_TIME = 0.0f;
 		TANK_MOVE_ON = true;
 	}
+
+	CCLOG("onKeyPressed: %d", (int)code);
 }
 
 void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
@@ -255,7 +262,28 @@ bool PlayerController::init()
 	keyboard->onKeyReleased = CC_CALLBACK_2(PlayerController::onKeyReleased, this);
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
 
+	auto controller = EventListenerController::create();
+	controller->onKeyDown = CC_CALLBACK_3(PlayerController::onControllerKeyPressed, this);
+	controller->onKeyUp = CC_CALLBACK_3(PlayerController::onControllerKeyReleased, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(controller, this);
+
 	scheduleUpdate();
 
 	return true;
+}
+
+void PlayerController::onControllerKeyPressed(Controller *controller, int key, Event *event)
+{
+	if (key == Controller::BUTTON_A) {
+		if (_player->shot(TANK_BULLET_SPEED)) {
+			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/player_shot.mp3").c_str());
+		}
+	}
+
+	CCLOG("onControllerKeyPressed");
+}
+
+void PlayerController::onControllerKeyReleased(Controller *controller, int key, Event *event)
+{
+
 }

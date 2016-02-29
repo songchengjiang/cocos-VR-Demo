@@ -30,14 +30,14 @@ THE SOFTWARE.
 #if CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
 
 #define glClearDepth                glClearDepthf
-#define glDeleteVertexArrays        glDeleteVertexArraysOES
-#define glGenVertexArrays           glGenVertexArraysOES
-#define glBindVertexArray           glBindVertexArrayOES
-#define glMapBuffer                 glMapBufferOES
-#define glUnmapBuffer               glUnmapBufferOES
+//#define glDeleteVertexArrays        glDeleteVertexArraysOES
+//#define glGenVertexArrays           glGenVertexArraysOES
+//#define glBindVertexArray           glBindVertexArrayOES
+//#define glMapBuffer                 glMapBufferOES
+//#define glUnmapBuffer               glUnmapBufferOES
 
-#define GL_DEPTH24_STENCIL8         GL_DEPTH24_STENCIL8_OES
-#define GL_WRITE_ONLY               GL_WRITE_ONLY_OES
+//#define GL_DEPTH24_STENCIL8         GL_DEPTH24_STENCIL8_OES
+//#define GL_WRITE_ONLY               GL_WRITE_ONLY_OES
 
 // GL_GLEXT_PROTOTYPES isn't defined in glplatform.h on android ndk r7 
 // we manually define it here
@@ -47,8 +47,8 @@ THE SOFTWARE.
 #endif
 
 // normal process
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#include <GLES3/gl3.h>
+#include <GLES3/gl3ext.h>
 // gl2.h doesn't define GLchar on Android
 typedef char GLchar;
 // android defines GL_BGRA_EXT but not GL_BRGA
@@ -57,13 +57,13 @@ typedef char GLchar;
 #endif
 
 //declare here while define in EGLView_android.cpp
-extern PFNGLGENVERTEXARRAYSOESPROC glGenVertexArraysOESEXT;
-extern PFNGLBINDVERTEXARRAYOESPROC glBindVertexArrayOESEXT;
-extern PFNGLDELETEVERTEXARRAYSOESPROC glDeleteVertexArraysOESEXT;
+//extern PFNGLGENVERTEXARRAYSOESPROC glGenVertexArraysOESEXT;
+//extern PFNGLBINDVERTEXARRAYOESPROC glBindVertexArrayOESEXT;
+//extern PFNGLDELETEVERTEXARRAYSOESPROC glDeleteVertexArraysOESEXT;
 
-#define glGenVertexArraysOES glGenVertexArraysOESEXT
-#define glBindVertexArrayOES glBindVertexArrayOESEXT
-#define glDeleteVertexArraysOES glDeleteVertexArraysOESEXT
+#define glGenVertexArraysOES glGenVertexArrays
+#define glBindVertexArrayOES glBindVertexArray
+#define glDeleteVertexArraysOES glDeleteVertexArrays
 
 
 #endif // CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID
