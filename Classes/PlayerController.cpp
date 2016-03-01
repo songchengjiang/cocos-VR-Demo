@@ -55,12 +55,16 @@ PlayerController::~PlayerController()
 void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 {
 	if (code == EventKeyboard::KeyCode::KEY_LEFT_ARROW) {
+		if (_cannonState == CannonState::ROTATE_LEFT) 
+			return;
 		_cannonState = CannonState::ROTATE_LEFT;
 		CONNON_ROTATE_TIME = 0.0f;
 		CONNON_ROTATE_ON = true;
 		CONNON_ROTATE_SOUND = SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/cannon_rotate2.mp3").c_str(), true);
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_RIGHT_ARROW) {
+		if (_cannonState == CannonState::ROTATE_RIGHT)
+			return;
 		_cannonState = CannonState::ROTATE_RIGHT;
 		CONNON_ROTATE_TIME = 0.0f;
 		CONNON_ROTATE_ON = true;
@@ -68,11 +72,15 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_UP_ARROW) {
+		if (_gunState == GunState::GUN_UP)
+			return;
 		_gunState = GunState::GUN_UP;
 		GUN_ROTATE_TIME = 0.0f;
 		GUN_ROTATE_ON = true;
 	}
 	else if (code == EventKeyboard::KeyCode::KEY_DOWN_ARROW) {
+		if (_gunState == GunState::GUN_DOWN)
+			return;
 		_gunState = GunState::GUN_DOWN;
 		GUN_ROTATE_TIME = 0.0f;
 		GUN_ROTATE_ON = true;
@@ -85,28 +93,36 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		}
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_A) {
+	if (code == EventKeyboard::KeyCode::KEY_A || code == EventKeyboard::KeyCode::KEY_DPAD_LEFT) {
+		if (_rotateState == PlayerRotateState::TURN_LEFT)
+			return;
 		_rotateState = PlayerRotateState::TURN_LEFT;
 		TANK_ROTATE_TIME = 0.0f;
 		TANK_ROTATE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_D) {
+	else if (code == EventKeyboard::KeyCode::KEY_D || code == EventKeyboard::KeyCode::KEY_DPAD_RIGHT) {
+		if (_rotateState == PlayerRotateState::TURN_RIGHT)
+			return;
 		_rotateState = PlayerRotateState::TURN_RIGHT;
 		TANK_ROTATE_TIME = 0.0f;
 		TANK_ROTATE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_W) {
+	else if (code == EventKeyboard::KeyCode::KEY_W || code == EventKeyboard::KeyCode::KEY_DPAD_UP) {
+		if (_moveState == PlayerMoveState::FRONT)
+			return;
 		_moveState = PlayerMoveState::FRONT;
 		TANK_MOVE_TIME = 0.0f;
 		TANK_MOVE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_S) {
+	else if (code == EventKeyboard::KeyCode::KEY_S || code == EventKeyboard::KeyCode::KEY_DPAD_DOWN) {
+		if (_moveState == PlayerMoveState::BACK)
+			return;
 		_moveState = PlayerMoveState::BACK;
 		TANK_MOVE_TIME = 0.0f;
 		TANK_MOVE_ON = true;
 	}
 
-	CCLOG("onKeyPressed: %d", (int)code);
+	CCLOG("onKeyPressed---: %d", (int)code);
 }
 
 void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
@@ -124,17 +140,23 @@ void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_A
-		|| code == EventKeyboard::KeyCode::KEY_D) {
+		|| code == EventKeyboard::KeyCode::KEY_D
+		|| code == EventKeyboard::KeyCode::KEY_DPAD_LEFT
+		|| code == EventKeyboard::KeyCode::KEY_DPAD_RIGHT
+		) {
 		//_rotateState = PlayerRotateState::STOP;
 		TANK_ROTATE_ON = false;
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_W
-		|| code == EventKeyboard::KeyCode::KEY_S) {
+		|| code == EventKeyboard::KeyCode::KEY_S
+		|| code == EventKeyboard::KeyCode::KEY_DPAD_UP
+		|| code == EventKeyboard::KeyCode::KEY_DPAD_DOWN) {
 		//_moveState = PlayerMoveState::STOP;
 		TANK_MOVE_ON = false;
 	}
 
+	CCLOG("onKeyReleased: %d", (int)code);
 }
 
 void PlayerController::update(float delta)
@@ -257,16 +279,20 @@ PlayerController* PlayerController::create()
 
 bool PlayerController::init()
 {
-	auto keyboard = EventListenerKeyboard::create();
-	keyboard->onKeyPressed = CC_CALLBACK_2(PlayerController::onKeyPressed, this);
-	keyboard->onKeyReleased = CC_CALLBACK_2(PlayerController::onKeyReleased, this);
-	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
+	//auto keyboard = EventListenerKeyboard::create();
+	//keyboard->onKeyPressed = CC_CALLBACK_2(PlayerController::onKeyPressed, this);
+	//keyboard->onKeyReleased = CC_CALLBACK_2(PlayerController::onKeyReleased, this);
+	//_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
 
 	auto controller = EventListenerController::create();
+	controller->onConnected = CC_CALLBACK_2(PlayerController::onControllerConnected, this);
+	controller->onDisconnected = CC_CALLBACK_2(PlayerController::onControllerDisconnected, this);
 	controller->onKeyDown = CC_CALLBACK_3(PlayerController::onControllerKeyPressed, this);
 	controller->onKeyUp = CC_CALLBACK_3(PlayerController::onControllerKeyReleased, this);
-	_eventDispatcher->addEventListenerWithSceneGraphPriority(controller, this);
+	controller->onAxisEvent = CC_CALLBACK_3(PlayerController::onControllerAxisEvent, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(controller, this); 
 
+	Controller::startDiscoveryController();
 	scheduleUpdate();
 
 	return true;
@@ -274,16 +300,36 @@ bool PlayerController::init()
 
 void PlayerController::onControllerKeyPressed(Controller *controller, int key, Event *event)
 {
-	if (key == Controller::BUTTON_A) {
+	CCLOG("onControllerKeyPressed: %d", key);
+	if (key == Controller::Key::BUTTON_A) {
 		if (_player->shot(TANK_BULLET_SPEED)) {
 			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/player_shot.mp3").c_str());
 		}
 	}
-
-	CCLOG("onControllerKeyPressed");
 }
 
 void PlayerController::onControllerKeyReleased(Controller *controller, int key, Event *event)
 {
+	CCLOG("onControllerKeyReleased: %d", key);
+}
 
+void PlayerController::onControllerAxisEvent(Controller *controller, int key, Event *event)
+{
+	CCLOG("onControllerAxisEvent: %d", key);
+}
+
+void PlayerController::onControllerConnected(Controller *controller, Event *event)
+{
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+	//receive back key
+	controller->receiveExternalKeyEvent(4, true);
+	//receive menu key
+	controller->receiveExternalKeyEvent(82, true);
+#endif
+	CCLOG("onControllerConnected");
+}
+
+void PlayerController::onControllerDisconnected(Controller *controller, Event *event)
+{
+	CCLOG("onControllerDisconnected");
 }

@@ -34,7 +34,7 @@ enum class GunState
 	STOP,
 };
 
-class PlayerController : public cocos2d::Node
+class PlayerController : public cocos2d::Layer
 {
 public:
 	~PlayerController();
@@ -54,8 +54,11 @@ private:
 	void onKeyPressed(cocos2d::EventKeyboard::KeyCode code, cocos2d::Event *event);
 	void onKeyReleased(cocos2d::EventKeyboard::KeyCode code, cocos2d::Event *event);
 
+	void onControllerConnected(cocos2d::Controller *controller, cocos2d::Event *event);
+	void onControllerDisconnected(cocos2d::Controller *controller, cocos2d::Event *event);
 	void onControllerKeyPressed(cocos2d::Controller *controller, int key, cocos2d::Event *event);
 	void onControllerKeyReleased(cocos2d::Controller *controller, int key, cocos2d::Event *event);
+	void onControllerAxisEvent(cocos2d::Controller *controller, int key, cocos2d::Event *event);
 
 private:
 

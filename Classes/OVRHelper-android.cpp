@@ -13,6 +13,7 @@ OVRHelper::~OVRHelper()
 }
 
 void cocos_android_app_onCreate(JavaVM *vm, JNIEnv* env, jobject activity) {
+	CCLOG("cocos_android_app_onCreate Begin");
 	env->GetJavaVM(&OVRHelper::java.Vm);
 	OVRHelper::java.Vm->AttachCurrentThread(&OVRHelper::java.Env, NULL);
 	OVRHelper::java.ActivityObject = env->NewGlobalRef(activity);
@@ -27,4 +28,5 @@ void cocos_android_app_onCreate(JavaVM *vm, JNIEnv* env, jobject activity) {
 			"VrApi initialization error.";
 		SystemActivities_DisplayError(&OVRHelper::java, SYSTEM_ACTIVITIES_FATAL_ERROR_OSIG, __FILE__, msg);
 	}
+	CCLOG("cocos_android_app_onCreate End");
 }

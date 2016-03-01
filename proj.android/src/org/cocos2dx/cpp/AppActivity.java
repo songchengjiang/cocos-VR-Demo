@@ -26,7 +26,22 @@ THE SOFTWARE.
 ****************************************************************************/
 package org.cocos2dx.cpp;
 
-import org.cocos2dx.lib.Cocos2dxActivity;
+import org.cocos2dx.lib.GameControllerActivity;
+//import org.cocos2dx.lib.GameControllerHelper.ControllerListener;
+import android.os.Bundle;
 
-public class AppActivity extends Cocos2dxActivity {
+public class AppActivity extends GameControllerActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        //The standard controller,without doing anything special. e.g: Amazon Fire TV
+        
+        //Manually specify an adapter.
+        this.connectController(DRIVERTYPE_NIBIRU);
+        //Nibiru SDK have already integrated with MOGA service.
+        //this.connectController(DRIVERTYPE_MOGA);
+        this.connectController(DRIVERTYPE_OUYA);
+    }
 }
