@@ -149,8 +149,8 @@ void Tank::shotBullet(float speed)
 	Physics3DRigidBodyDes rbDes;
 	rbDes.mass = 10.f;
 	rbDes.shape = Physics3DShape::createCapsule(0.1f, 0.2f);
-	auto bullet = PhysicsSprite3D::create("models/tank/bullet.c3b", &rbDes);
-	bullet->setTexture("models/tank/orange_edit.png");
+	auto bullet = PhysicsSprite3D::create("models/bullet.c3b", &rbDes);
+	bullet->setTexture("models/orange_edit.png");
 	Director::getInstance()->getRunningScene()->addChild(bullet);
 
 	Vec3 rotate = this->getRotation3D();

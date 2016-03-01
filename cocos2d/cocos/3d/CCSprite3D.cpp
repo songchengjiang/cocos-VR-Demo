@@ -381,7 +381,7 @@ Sprite3D* Sprite3D::createSprite3DNode(NodeData* nodedata,ModelData* modeldata,c
                     if(tex)
                     {
                         Texture2D::TexParams texParams;
-                        texParams.minFilter = GL_LINEAR;
+                        texParams.minFilter = GL_LINEAR_MIPMAP_LINEAR;
                         texParams.magFilter = GL_LINEAR;
                         texParams.wrapS = textureData->wrapS;
                         texParams.wrapT = textureData->wrapT;

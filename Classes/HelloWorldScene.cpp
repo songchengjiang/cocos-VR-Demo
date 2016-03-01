@@ -17,7 +17,7 @@
 USING_NS_CC;
 using namespace CocosDenshion;
 
-#define HP_REDUCE_VALUE 10
+#define HP_REDUCE_VALUE 20
 #define HP_LOWER_LIMIT  50
 
 #define SMOKE_PS_TAG  0x0F
@@ -290,7 +290,9 @@ bool HelloWorld::init()
 					enemy_damaged->setRotationQuat(enemy->getRotationQuat());
 					enemy_damaged->setScale(enemy->getScale());
 					this->addChild(enemy_damaged);
-					enemy_damaged->runAction(Sequence::create(DelayTime::create(5.0f), CallFunc::create([enemy_damaged]() {
+					enemy_damaged->runAction(Sequence::create(CallFunc::create([enemy_damaged]() {
+						enemy_damaged->runAction(MoveBy::create(5.0f, Vec3(0.0f, -5.0f, 0.0f)));
+					}), DelayTime::create(5.0f), CallFunc::create([enemy_damaged]() {
 						enemy_damaged->removeFromParent();
 					}), nullptr));
 					this->removeEnemy(enemy);

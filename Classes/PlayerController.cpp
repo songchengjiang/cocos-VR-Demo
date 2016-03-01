@@ -11,12 +11,15 @@
 USING_NS_CC;
 using namespace CocosDenshion;
 
+#define BUTTON_L2 1017
+#define BUTTON_R2 1018
+
 #define CANNON_STAGE_ROTATE_SPEED     2.0f
-#define CANNON_STAGE_MAX_ROTATE_SPEED 1.5f
+#define CANNON_STAGE_MAX_ROTATE_SPEED 1.0f
 #define CANNON_GUN_ROTATE_SPEED       3.0f
-#define CANNON_GUN_MAX_ROTATE_SPEED   0.3f
-#define TANK_MOVE_SPEED           0.2f
-#define TANK_MAX_MOVE_SPEED       0.4f
+#define CANNON_GUN_MAX_ROTATE_SPEED   0.5f
+#define TANK_MOVE_SPEED           0.3f
+#define TANK_MAX_MOVE_SPEED       0.5f
 
 //#define TANK_MOVE_FORCE           5.0f
 //#define TANK_TURN_TORQUE          45.0f
@@ -93,28 +96,28 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		}
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_A || code == EventKeyboard::KeyCode::KEY_DPAD_LEFT) {
+	if (code == EventKeyboard::KeyCode::KEY_A) {
 		if (_rotateState == PlayerRotateState::TURN_LEFT)
 			return;
 		_rotateState = PlayerRotateState::TURN_LEFT;
 		TANK_ROTATE_TIME = 0.0f;
 		TANK_ROTATE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_D || code == EventKeyboard::KeyCode::KEY_DPAD_RIGHT) {
+	else if (code == EventKeyboard::KeyCode::KEY_D) {
 		if (_rotateState == PlayerRotateState::TURN_RIGHT)
 			return;
 		_rotateState = PlayerRotateState::TURN_RIGHT;
 		TANK_ROTATE_TIME = 0.0f;
 		TANK_ROTATE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_W || code == EventKeyboard::KeyCode::KEY_DPAD_UP) {
+	else if (code == EventKeyboard::KeyCode::KEY_W) {
 		if (_moveState == PlayerMoveState::FRONT)
 			return;
 		_moveState = PlayerMoveState::FRONT;
 		TANK_MOVE_TIME = 0.0f;
 		TANK_MOVE_ON = true;
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_S || code == EventKeyboard::KeyCode::KEY_DPAD_DOWN) {
+	else if (code == EventKeyboard::KeyCode::KEY_S) {
 		if (_moveState == PlayerMoveState::BACK)
 			return;
 		_moveState = PlayerMoveState::BACK;
@@ -141,17 +144,13 @@ void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
 
 	if (code == EventKeyboard::KeyCode::KEY_A
 		|| code == EventKeyboard::KeyCode::KEY_D
-		|| code == EventKeyboard::KeyCode::KEY_DPAD_LEFT
-		|| code == EventKeyboard::KeyCode::KEY_DPAD_RIGHT
 		) {
 		//_rotateState = PlayerRotateState::STOP;
 		TANK_ROTATE_ON = false;
 	}
 
 	if (code == EventKeyboard::KeyCode::KEY_W
-		|| code == EventKeyboard::KeyCode::KEY_S
-		|| code == EventKeyboard::KeyCode::KEY_DPAD_UP
-		|| code == EventKeyboard::KeyCode::KEY_DPAD_DOWN) {
+		|| code == EventKeyboard::KeyCode::KEY_S) {
 		//_moveState = PlayerMoveState::STOP;
 		TANK_MOVE_ON = false;
 	}
@@ -221,7 +220,6 @@ void PlayerController::update(float delta)
 	if (CONNON_ROTATE_TIME < 0.0f) {
 		CONNON_ROTATE_TIME = 0.0f;
 		_cannonState = CannonState::STOP;
-		SimpleAudioEngine::getInstance()->stopEffect(CONNON_ROTATE_SOUND);
 	}
 
 	if (GUN_ROTATE_ON)
@@ -279,11 +277,12 @@ PlayerController* PlayerController::create()
 
 bool PlayerController::init()
 {
-	//auto keyboard = EventListenerKeyboard::create();
-	//keyboard->onKeyPressed = CC_CALLBACK_2(PlayerController::onKeyPressed, this);
-	//keyboard->onKeyReleased = CC_CALLBACK_2(PlayerController::onKeyReleased, this);
-	//_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
+	auto keyboard = EventListenerKeyboard::create();
+	keyboard->onKeyPressed = CC_CALLBACK_2(PlayerController::onKeyPressed, this);
+	keyboard->onKeyReleased = CC_CALLBACK_2(PlayerController::onKeyReleased, this);
+	_eventDispatcher->addEventListenerWithSceneGraphPriority(keyboard, this);
 
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 	auto controller = EventListenerController::create();
 	controller->onConnected = CC_CALLBACK_2(PlayerController::onControllerConnected, this);
 	controller->onDisconnected = CC_CALLBACK_2(PlayerController::onControllerDisconnected, this);
@@ -291,8 +290,9 @@ bool PlayerController::init()
 	controller->onKeyUp = CC_CALLBACK_3(PlayerController::onControllerKeyReleased, this);
 	controller->onAxisEvent = CC_CALLBACK_3(PlayerController::onControllerAxisEvent, this);
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(controller, this); 
-
 	Controller::startDiscoveryController();
+#endif
+
 	scheduleUpdate();
 
 	return true;
@@ -301,21 +301,145 @@ bool PlayerController::init()
 void PlayerController::onControllerKeyPressed(Controller *controller, int key, Event *event)
 {
 	CCLOG("onControllerKeyPressed: %d", key);
-	if (key == Controller::Key::BUTTON_A) {
+
+	switch (key)
+	{
+	case Controller::Key::BUTTON_RIGHT_SHOULDER: {
 		if (_player->shot(TANK_BULLET_SPEED)) {
 			SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/player_shot.mp3").c_str());
 		}
+	}
+		break;
+	case BUTTON_L2: {
+		_moveState = PlayerMoveState::FRONT;
+		TANK_MOVE_TIME = 0.0f;
+		TANK_MOVE_ON = true;
+	}
+		break;
+	case BUTTON_R2: {
+		_moveState = PlayerMoveState::BACK;
+		TANK_MOVE_TIME = 0.0f;
+		TANK_MOVE_ON = true;
+	}
+		break;
+	default:
+		break;
 	}
 }
 
 void PlayerController::onControllerKeyReleased(Controller *controller, int key, Event *event)
 {
+	switch (key)
+	{
+	case BUTTON_L2: {
+		TANK_MOVE_ON = false;
+	}
+		break;
+	case BUTTON_R2: {
+		TANK_MOVE_ON = false;
+	}
+		break;
+	default:
+		break;
+	}
+
 	CCLOG("onControllerKeyReleased: %d", key);
 }
 
 void PlayerController::onControllerAxisEvent(Controller *controller, int key, Event *event)
 {
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
+	const auto& ketStatus = controller->getKeyStatus(key);
+	switch (key)
+	{
+	case Controller::Key::JOYSTICK_LEFT_X:{
+		if (ketStatus.value < 0) {
+			if (_rotateState == PlayerRotateState::TURN_LEFT)
+				return;
+			_rotateState = PlayerRotateState::TURN_LEFT;
+			TANK_ROTATE_TIME = 0.0f;
+			TANK_ROTATE_ON = true;
+		}
+		else if (ketStatus.value > 0) {
+			if (_rotateState == PlayerRotateState::TURN_RIGHT)
+				return;
+			_rotateState = PlayerRotateState::TURN_RIGHT;
+			TANK_ROTATE_TIME = 0.0f;
+			TANK_ROTATE_ON = true;
+		}
+		else {
+			TANK_ROTATE_ON = false;
+		}
+	}
+		break;
+	//case Controller::Key::JOYSTICK_LEFT_Y: {
+	//	if (ketStatus.value < 0) {
+	//		if (_moveState == PlayerMoveState::FRONT)
+	//			return;
+	//		_moveState = PlayerMoveState::FRONT;
+	//		TANK_MOVE_TIME = 0.0f;
+	//		TANK_MOVE_ON = true;
+	//	}
+	//	else if (ketStatus.value > 0) {
+	//		if (_moveState == PlayerMoveState::BACK)
+	//			return;
+	//		_moveState = PlayerMoveState::BACK;
+	//		TANK_MOVE_TIME = 0.0f;
+	//		TANK_MOVE_ON = true;
+	//	}
+	//	else {
+	//		TANK_MOVE_ON = false;
+	//	}
+	//}
+	//	break;
+	case Controller::Key::JOYSTICK_RIGHT_X: {
+		if (ketStatus.value < 0) {
+			if (_cannonState == CannonState::ROTATE_LEFT)
+				return;
+			_cannonState = CannonState::ROTATE_LEFT;
+			CONNON_ROTATE_TIME = 0.0f;
+			CONNON_ROTATE_ON = true;
+			CONNON_ROTATE_SOUND = SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/cannon_rotate2.mp3").c_str(), true);
+		}
+		else if (ketStatus.value > 0) {
+			if (_cannonState == CannonState::ROTATE_RIGHT)
+				return;
+			_cannonState = CannonState::ROTATE_RIGHT;
+			CONNON_ROTATE_TIME = 0.0f;
+			CONNON_ROTATE_ON = true;
+			CONNON_ROTATE_SOUND = SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/cannon_rotate2.mp3").c_str(), true);
+		}else{
+			CONNON_ROTATE_ON = false;
+			SimpleAudioEngine::getInstance()->stopEffect(CONNON_ROTATE_SOUND);
+		}
+	}
+		break;
+	case Controller::Key::JOYSTICK_RIGHT_Y:{
+		if (ketStatus.value < 0) {
+			if (_gunState == GunState::GUN_UP)
+				return;
+			_gunState = GunState::GUN_UP;
+			GUN_ROTATE_TIME = 0.0f;
+			GUN_ROTATE_ON = true;
+		}
+		else if (ketStatus.value > 0) {
+			if (_gunState == GunState::GUN_DOWN)
+				return;
+			_gunState = GunState::GUN_DOWN;
+			GUN_ROTATE_TIME = 0.0f;
+			GUN_ROTATE_ON = true;
+		}
+		else {
+			GUN_ROTATE_ON = false;
+		}
+	}
+		break;
+	default:
+		break;
+	}
+
 	CCLOG("onControllerAxisEvent: %d", key);
+#endif
 }
 
 void PlayerController::onControllerConnected(Controller *controller, Event *event)
