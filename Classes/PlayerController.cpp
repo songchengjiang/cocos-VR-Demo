@@ -253,12 +253,13 @@ void PlayerController::update(float delta)
 			Vec3::cross(movrDir, preMoveDir, &rotDir);
 			//CCLOG("angle: %f", deltaAngle);
 			if (0.01f < abs(deltaAngle)) {
-				float angle = deltaAngle * delta;
+				float angle = deltaAngle * 0.02f;
 				angle = deltaAngle < angle ? deltaAngle : angle;
 				angle = 0.0f < rotDir.y ? -angle : angle;
 				_player->turn(angle);
 				_player->rotateCannonStage(-angle);
 				_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-angle)));
+				CCLOG("angle: %f", angle);
 			}
 		}
 		//_ovrRenderer->setOffsetRot(rot);
@@ -396,6 +397,37 @@ void PlayerController::onControllerKeyPressed(Controller *controller, int key, E
 		TANK_MOVE_ON = true;
 	}
 		break;
+	case Controller::Key::BUTTON_DPAD_LEFT:
+	case Controller::Key::BUTTON_DPAD_RIGHT:
+	case Controller::Key::BUTTON_DPAD_UP:
+	case Controller::Key::BUTTON_DPAD_DOWN:
+	{
+		if (_rotateState != PlayerRotateState::TURN) {
+			_rotateState = PlayerRotateState::TURN;
+			TANK_ROTATE_TIME = 0.0f;
+			TANK_ROTATE_ON = true;
+		}
+
+		if (_moveState != PlayerMoveState::FRONT) {
+			_moveState = PlayerMoveState::FRONT;
+			TANK_MOVE_TIME = 0.0f;
+			TANK_MOVE_ON = true;
+		}
+
+		if (key == Controller::Key::BUTTON_DPAD_LEFT) {
+			_moveDir.x = -1.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_RIGHT) {
+			_moveDir.x = 1.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_UP) {
+			_moveDir.z = -1.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_DOWN) {
+			_moveDir.z = 1.0f;
+		}
+	}
+					break;
 	default:
 		break;
 	}
@@ -413,6 +445,29 @@ void PlayerController::onControllerKeyReleased(Controller *controller, int key, 
 		TANK_MOVE_ON = false;
 	}
 		break;
+	case Controller::Key::BUTTON_DPAD_LEFT:
+	case Controller::Key::BUTTON_DPAD_RIGHT:
+	case Controller::Key::BUTTON_DPAD_UP:
+	case Controller::Key::BUTTON_DPAD_DOWN:
+	{
+		_moveDir = Vec3::ZERO;
+		TANK_ROTATE_ON = false;
+		TANK_MOVE_ON = false;
+
+		if (key == Controller::Key::BUTTON_DPAD_LEFT) {
+			_moveDir.x = 0.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_RIGHT) {
+			_moveDir.x = 0.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_UP) {
+			_moveDir.z = 0.0f;
+		}
+		else if (key == Controller::Key::BUTTON_DPAD_DOWN) {
+			_moveDir.z = 0.0f;
+		}
+	}
+	break;
 	default:
 		break;
 	}

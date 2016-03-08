@@ -168,6 +168,8 @@ bool HelloWorld::init()
 	navMesh->setDebugDrawEnable(false);
 	setNavMesh(navMesh);
 
+	auto pc = PlayerController::create();
+	this->addChild(pc);
 
 	_player = M24::create();
 	_player->setPosition3D(Vec3(0.0f, 0.0f, 120.0f));
@@ -182,8 +184,6 @@ bool HelloWorld::init()
 	_player->addChild(ovrRenderer);
 	ovrRenderer->setOffsetPos(Vec3(0.0f, 3.2f, 0.0f));
 
-	auto pc = PlayerController::create();
-	this->addChild(pc);
 	pc->setPlayer(_player);
 	pc->setOVRRenderer(ovrRenderer);
 
