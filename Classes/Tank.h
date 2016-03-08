@@ -21,9 +21,10 @@ public:
 	void rotateCannonStage(float angle);
 	void rotateCannonGun(float angle);
 	void setTexture(cocos2d::Texture2D *texture);
-	float getCannonStageAngle() const { return _cannonStageAngle; }
+	float getCannonStageAngle() const { return _cannonStageAngle - 180.0f; }
 	float getCannonGunAngle() const { return _cannonGunAngle; }
 	float getTurnAngle() const { return _turnAngle; }
+	cocos2d::Node *getCannonStageNode() const;
 	
 	void setAttackCallback(const cocos2d::Physics3DObject::CollisionCallbackFunc &func) { _callBack = func; }
 

@@ -284,3 +284,8 @@ void Tank::changeRightTrackTexture(float step)
 	currentIdx = currentIdx < 0.0f ? 4.0f + currentIdx : currentIdx;
 	static_cast<Sprite3D *>(this->getChildByName("Righttrack"))->setTexture(_trackTextures[(int)currentIdx]);
 }
+
+cocos2d::Node * Tank::getCannonStageNode() const
+{
+	return _cannon;
+}

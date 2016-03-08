@@ -14,6 +14,8 @@ using namespace CocosDenshion;
 #define BUTTON_L2 1017
 #define BUTTON_R2 1018
 
+#define TANK_ROTATE_SPEED     2.0f
+#define TANK_MAX_ROTATE_SPEED 1.0f
 #define CANNON_STAGE_ROTATE_SPEED     2.0f
 #define CANNON_STAGE_MAX_ROTATE_SPEED 1.0f
 #define CANNON_GUN_ROTATE_SPEED       3.0f
@@ -47,6 +49,7 @@ PlayerController::PlayerController()
 	, _rotateState(PlayerRotateState::STOP)
 	, _cannonState(CannonState::STOP)
 	, _gunState(GunState::STOP)
+	, _pressNum(0)
 {
 }
 
@@ -96,34 +99,61 @@ void PlayerController::onKeyPressed(EventKeyboard::KeyCode code, Event *event)
 		}
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_A) {
-		if (_rotateState == PlayerRotateState::TURN_LEFT)
-			return;
-		_rotateState = PlayerRotateState::TURN_LEFT;
-		TANK_ROTATE_TIME = 0.0f;
-		TANK_ROTATE_ON = true;
+	if (code == EventKeyboard::KeyCode::KEY_A
+		|| code == EventKeyboard::KeyCode::KEY_D
+		|| code == EventKeyboard::KeyCode::KEY_W
+		|| code == EventKeyboard::KeyCode::KEY_S) {
+		if (_rotateState != PlayerRotateState::TURN) {
+			_rotateState = PlayerRotateState::TURN;
+			TANK_ROTATE_TIME = 0.0f;
+			TANK_ROTATE_ON = true;
+		}
+
+		if (_moveState != PlayerMoveState::FRONT) {
+			_moveState = PlayerMoveState::FRONT;
+			TANK_MOVE_TIME = 0.0f;
+			TANK_MOVE_ON = true;
+		}
+
+		if (code == EventKeyboard::KeyCode::KEY_A) {
+			_moveDir.x = -1.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_D) {
+			_moveDir.x = 1.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_W) {
+			_moveDir.z = -1.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_S) {
+			_moveDir.z = 1.0f;
+		}
+
+		auto iter = std::find(_keyCodeStack.begin(), _keyCodeStack.end(), code);
+		if (iter == _keyCodeStack.end()) {
+			_keyCodeStack.push_back(code);
+		}
 	}
-	else if (code == EventKeyboard::KeyCode::KEY_D) {
-		if (_rotateState == PlayerRotateState::TURN_RIGHT)
-			return;
-		_rotateState = PlayerRotateState::TURN_RIGHT;
-		TANK_ROTATE_TIME = 0.0f;
-		TANK_ROTATE_ON = true;
-	}
-	else if (code == EventKeyboard::KeyCode::KEY_W) {
-		if (_moveState == PlayerMoveState::FRONT)
-			return;
-		_moveState = PlayerMoveState::FRONT;
-		TANK_MOVE_TIME = 0.0f;
-		TANK_MOVE_ON = true;
-	}
-	else if (code == EventKeyboard::KeyCode::KEY_S) {
-		if (_moveState == PlayerMoveState::BACK)
-			return;
-		_moveState = PlayerMoveState::BACK;
-		TANK_MOVE_TIME = 0.0f;
-		TANK_MOVE_ON = true;
-	}
+	//else if (code == EventKeyboard::KeyCode::KEY_D) {
+	//	if (_rotateState == PlayerRotateState::TURN)
+	//		return;
+	//	_rotateState = PlayerRotateState::TURN;
+	//	TANK_ROTATE_TIME = 0.0f;
+	//	TANK_ROTATE_ON = true;
+	//}
+	//else if (code == EventKeyboard::KeyCode::KEY_W) {
+	//	if (_moveState == PlayerMoveState::FRONT)
+	//		return;
+	//	_moveState = PlayerMoveState::FRONT;
+	//	TANK_MOVE_TIME = 0.0f;
+	//	TANK_MOVE_ON = true;
+	//}
+	//else if (code == EventKeyboard::KeyCode::KEY_S) {
+	//	if (_moveState == PlayerMoveState::BACK)
+	//		return;
+	//	_moveState = PlayerMoveState::BACK;
+	//	TANK_MOVE_TIME = 0.0f;
+	//	TANK_MOVE_ON = true;
+	//}
 
 	CCLOG("onKeyPressed---: %d", (int)code);
 }
@@ -144,16 +174,40 @@ void PlayerController::onKeyReleased(EventKeyboard::KeyCode code, Event *event)
 
 	if (code == EventKeyboard::KeyCode::KEY_A
 		|| code == EventKeyboard::KeyCode::KEY_D
+		|| code == EventKeyboard::KeyCode::KEY_W
+		|| code == EventKeyboard::KeyCode::KEY_S
 		) {
+		auto iter = std::find(_keyCodeStack.begin(), _keyCodeStack.end(), code);
+		_keyCodeStack.erase(iter);
 		//_rotateState = PlayerRotateState::STOP;
-		TANK_ROTATE_ON = false;
+		if (!_keyCodeStack.empty()) {
+			onKeyPressed(_keyCodeStack.back(), nullptr);
+		}
+		else {
+			_moveDir = Vec3::ZERO;
+			TANK_ROTATE_ON = false;
+			TANK_MOVE_ON = false;
+		}
+
+		if (code == EventKeyboard::KeyCode::KEY_A) {
+			_moveDir.x = 0.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_D) {
+			_moveDir.x = 0.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_W) {
+			_moveDir.z = 0.0f;
+		}
+		else if (code == EventKeyboard::KeyCode::KEY_S) {
+			_moveDir.z = 0.0f;
+		}
 	}
 
-	if (code == EventKeyboard::KeyCode::KEY_W
-		|| code == EventKeyboard::KeyCode::KEY_S) {
-		//_moveState = PlayerMoveState::STOP;
-		TANK_MOVE_ON = false;
-	}
+	//if (code == EventKeyboard::KeyCode::KEY_W
+	//	|| code == EventKeyboard::KeyCode::KEY_S) {
+	//	//_moveState = PlayerMoveState::STOP;
+	//	TANK_MOVE_ON = false;
+	//}
 
 	CCLOG("onKeyReleased: %d", (int)code);
 }
@@ -181,33 +235,52 @@ void PlayerController::update(float delta)
 		_player->rotateCannonGun(-angle);
 	}
 
-	if (_rotateState == PlayerRotateState::TURN_LEFT) {
+	if (_rotateState == PlayerRotateState::TURN) {
 		//auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(delta * TANK_TURN_SPEED));
 		//_player->setRotationQuat(_player->getRotationQuat() * rot);
-		float angle = TANK_ROTATE_TIME * TANK_ROTATE_TIME;
-		_player->turn(angle);
-		_player->rotateCannonStage(-angle);
-		_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-angle)));
+		if (0.0f < _moveDir.lengthSquared()) {
+			auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(_player->getTurnAngle()));
+			Vec3 preMoveDir = rot * Vec3(0.0f, 0.0f, -1.0f);
+
+			rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(_player->getCannonStageAngle())) * rot;
+			Vec3 movrDir = rot * _moveDir;
+			movrDir.normalize();
+
+			//Vec3 movrDir = _moveDir;
+
+			float deltaAngle = CC_RADIANS_TO_DEGREES(acos(clampf(movrDir.dot(preMoveDir), 0.0f, 1.0f)));
+			Vec3 rotDir;
+			Vec3::cross(movrDir, preMoveDir, &rotDir);
+			//CCLOG("angle: %f", deltaAngle);
+			if (0.01f < abs(deltaAngle)) {
+				float angle = deltaAngle * delta;
+				angle = deltaAngle < angle ? deltaAngle : angle;
+				angle = 0.0f < rotDir.y ? -angle : angle;
+				_player->turn(angle);
+				_player->rotateCannonStage(-angle);
+				_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-angle)));
+			}
+		}
 		//_ovrRenderer->setOffsetRot(rot);
 	}
-	else if (_rotateState == PlayerRotateState::TURN_RIGHT) {
-		//auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-delta * TANK_TURN_SPEED));
-		//_player->setRotationQuat(_player->getRotationQuat() * rot);
-		float angle = TANK_ROTATE_TIME * TANK_ROTATE_TIME;
-		_player->turn(-angle);
-		_player->rotateCannonStage(angle);
-		_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(angle)));
-		//_ovrRenderer->setOffsetRot(rot);
-	}
+	//else if (_rotateState == PlayerRotateState::TURN_RIGHT) {
+	//	//auto rot = Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(-delta * TANK_TURN_SPEED));
+	//	//_player->setRotationQuat(_player->getRotationQuat() * rot);
+	//	float angle = TANK_ROTATE_TIME * TANK_ROTATE_TIME;
+	//	_player->turn(-angle);
+	//	_player->rotateCannonStage(angle);
+	//	_ovrRenderer->setOffsetRot(Quaternion(Vec3::UNIT_Y, CC_DEGREES_TO_RADIANS(angle)));
+	//	//_ovrRenderer->setOffsetRot(rot);
+	//}
 
 	if (_moveState == PlayerMoveState::FRONT) {
 		float moveSpeed = TANK_MOVE_TIME * TANK_MOVE_TIME;
 		_player->move(moveSpeed);
 	}
-	else if (_moveState == PlayerMoveState::BACK) {
-		float moveSpeed = TANK_MOVE_TIME * TANK_MOVE_TIME;
-		_player->move(-moveSpeed);
-	}
+	//else if (_moveState == PlayerMoveState::BACK) {
+	//	float moveSpeed = TANK_MOVE_TIME * TANK_MOVE_TIME;
+	//	_player->move(-moveSpeed);
+	//}
 
 	if (CONNON_ROTATE_ON)
 		CONNON_ROTATE_TIME += delta * CANNON_STAGE_ROTATE_SPEED;
@@ -237,16 +310,17 @@ void PlayerController::update(float delta)
 
 
 	if (TANK_ROTATE_ON)
-		TANK_ROTATE_TIME += delta * CANNON_STAGE_ROTATE_SPEED;
+		TANK_ROTATE_TIME += delta * TANK_ROTATE_SPEED;
 	else
-		TANK_ROTATE_TIME -= delta * CANNON_STAGE_ROTATE_SPEED;
+		TANK_ROTATE_TIME -= delta * TANK_ROTATE_SPEED;
 
-	if (CANNON_STAGE_MAX_ROTATE_SPEED < TANK_ROTATE_TIME)
-		TANK_ROTATE_TIME = CANNON_STAGE_MAX_ROTATE_SPEED;
+	if (TANK_MAX_ROTATE_SPEED < TANK_ROTATE_TIME)
+		TANK_ROTATE_TIME = TANK_MAX_ROTATE_SPEED;
 
 	if (TANK_ROTATE_TIME < 0.0f) {
 		TANK_ROTATE_TIME = 0.0f;
 		_rotateState = PlayerRotateState::STOP;
+		TANK_MOVE_ON = false;
 	}
 
 	if (TANK_MOVE_ON)
@@ -353,45 +427,47 @@ void PlayerController::onControllerAxisEvent(Controller *controller, int key, Ev
 	switch (key)
 	{
 	case Controller::Key::JOYSTICK_LEFT_X:{
-		if (ketStatus.value < 0) {
-			if (_rotateState == PlayerRotateState::TURN_LEFT)
-				return;
-			_rotateState = PlayerRotateState::TURN_LEFT;
-			TANK_ROTATE_TIME = 0.0f;
-			TANK_ROTATE_ON = true;
-		}
-		else if (ketStatus.value > 0) {
-			if (_rotateState == PlayerRotateState::TURN_RIGHT)
-				return;
-			_rotateState = PlayerRotateState::TURN_RIGHT;
-			TANK_ROTATE_TIME = 0.0f;
-			TANK_ROTATE_ON = true;
-		}
-		else {
-			TANK_ROTATE_ON = false;
-		}
+		_moveDir.x = ketStatus.value;
+		//if (ketStatus.value < 0) {
+		//	if (_rotateState == PlayerRotateState::TURN)
+		//		return;
+		//	_rotateState = PlayerRotateState::TURN;
+		//	TANK_ROTATE_TIME = 0.0f;
+		//	TANK_ROTATE_ON = true;
+		//}
+		//else if (ketStatus.value > 0) {
+		//	if (_rotateState == PlayerRotateState::TURN_RIGHT)
+		//		return;
+		//	_rotateState = PlayerRotateState::TURN_RIGHT;
+		//	TANK_ROTATE_TIME = 0.0f;
+		//	TANK_ROTATE_ON = true;
+		//}
+		//else {
+		//	TANK_ROTATE_ON = false;
+		//}
 	}
 		break;
-	//case Controller::Key::JOYSTICK_LEFT_Y: {
-	//	if (ketStatus.value < 0) {
-	//		if (_moveState == PlayerMoveState::FRONT)
-	//			return;
-	//		_moveState = PlayerMoveState::FRONT;
-	//		TANK_MOVE_TIME = 0.0f;
-	//		TANK_MOVE_ON = true;
-	//	}
-	//	else if (ketStatus.value > 0) {
-	//		if (_moveState == PlayerMoveState::BACK)
-	//			return;
-	//		_moveState = PlayerMoveState::BACK;
-	//		TANK_MOVE_TIME = 0.0f;
-	//		TANK_MOVE_ON = true;
-	//	}
-	//	else {
-	//		TANK_MOVE_ON = false;
-	//	}
-	//}
-	//	break;
+	case Controller::Key::JOYSTICK_LEFT_Y: {
+		_moveDir.z = ketStatus.value;
+		//if (ketStatus.value < 0) {
+		//	if (_moveState == PlayerMoveState::FRONT)
+		//		return;
+		//	_moveState = PlayerMoveState::FRONT;
+		//	TANK_MOVE_TIME = 0.0f;
+		//	TANK_MOVE_ON = true;
+		//}
+		//else if (ketStatus.value > 0) {
+		//	if (_moveState == PlayerMoveState::BACK)
+		//		return;
+		//	_moveState = PlayerMoveState::BACK;
+		//	TANK_MOVE_TIME = 0.0f;
+		//	TANK_MOVE_ON = true;
+		//}
+		//else {
+		//	TANK_MOVE_ON = false;
+		//}
+	}
+	   break;
 	case Controller::Key::JOYSTICK_RIGHT_X: {
 		if (ketStatus.value < 0) {
 			if (_cannonState == CannonState::ROTATE_LEFT)
@@ -436,6 +512,23 @@ void PlayerController::onControllerAxisEvent(Controller *controller, int key, Ev
 		break;
 	default:
 		break;
+	}
+
+	if (0.0f < _moveDir.lengthSquared()) {
+		if (_rotateState != PlayerRotateState::TURN) {
+			_rotateState = PlayerRotateState::TURN;
+			TANK_ROTATE_TIME = 0.0f;
+			TANK_ROTATE_ON = true;
+		}
+
+		if (_moveState != PlayerMoveState::FRONT) {
+			_moveState = PlayerMoveState::FRONT;
+			TANK_MOVE_TIME = 0.0f;
+			TANK_MOVE_ON = true;
+		}
+	}else {
+		TANK_ROTATE_ON = false;
+		TANK_MOVE_ON = false;
 	}
 
 	CCLOG("onControllerAxisEvent: %d", key);

@@ -15,8 +15,7 @@ enum class PlayerMoveState
 
 enum class PlayerRotateState
 {
-	TURN_LEFT,
-	TURN_RIGHT,
+	TURN,
 	STOP,
 };
 
@@ -68,6 +67,10 @@ private:
 	PlayerRotateState _rotateState;
 	CannonState       _cannonState;
 	GunState          _gunState;
+
+	unsigned int      _pressNum;
+	cocos2d::Vec3     _moveDir;
+	std::vector<cocos2d::EventKeyboard::KeyCode> _keyCodeStack;
 };
 
 #endif
