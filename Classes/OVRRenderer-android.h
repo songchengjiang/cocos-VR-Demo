@@ -3,6 +3,14 @@
 #include "cocos2d.h"
 #include "OVRHelper-android.h"
 
+#if GEAR_VR
+#define EYE_NUM VRAPI_FRAME_LAYER_EYE_MAX
+#endif
+
+#if DEEPOON
+#define EYE_NUM 2
+#endif
+
 class OVRRenderer : public cocos2d::Node
 {
 public:
@@ -24,17 +32,19 @@ private:
 
 private:
 
-	cocos2d::Camera *_eyeCamera[VRAPI_FRAME_LAYER_EYE_MAX];
+	cocos2d::Camera *_eyeCamera[EYE_NUM];
 	cocos2d::Vec3       _offsetPos;
 	cocos2d::Quaternion _offsetRot;
 
-	ovrFramebuffer  _frameBuffer[VRAPI_FRAME_LAYER_EYE_MAX];
+#if GEAR_VR
+	ovrFramebuffer  _frameBuffer[EYE_NUM];
 	ovrMobile      *_ovr;
 	ovrJava         _java;
 	long long       _frameIndex;
 	ovrMatrix4f     _projectionMatrix;
 	ovrTracking     _tracking;
 	ovrFrameParms   _frameParams;
+#endif
 
 
 	cocos2d::CustomCommand _beginRenderCommand;

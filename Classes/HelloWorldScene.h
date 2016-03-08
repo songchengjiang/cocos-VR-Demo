@@ -3,6 +3,7 @@
 
 #include "cocos2d.h"
 #include "physics3d/CCPhysics3D.h"
+#include "ProgressView .h"
 
 class Tank;
 class HelloWorld : public cocos2d::Scene
@@ -24,6 +25,7 @@ private:
 	struct TankState
 	{
 		Tank *tank;
+		ProgressView *pv;
 		float moveTime;
 		float randomAngle;
 		bool needChangeDir;

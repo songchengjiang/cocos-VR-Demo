@@ -13,6 +13,7 @@
 #include "physics3d/CCPhysics3D.h"
 #include "3d/CCBundle3D.h"
 #include "SimpleAudioEngine.h"
+#include "navmesh/CCNavMesh.h"
 
 USING_NS_CC;
 using namespace CocosDenshion;
@@ -27,6 +28,20 @@ using namespace CocosDenshion;
 #define TRACKING  2
 #define ESCAPING  3
 #define DEAD      4
+
+void recycleSetTextureParams(Node *node, const Texture2D::TexParams &params)
+{
+	if (dynamic_cast<Sprite3D *>(node)) {
+		auto sprite3d = dynamic_cast<Sprite3D *>(node);
+		for (unsigned int i = 0; i < sprite3d->getMeshCount(); ++i) {
+			auto mesh = sprite3d->getMeshByIndex(i);
+			mesh->getTexture()->setTexParameters(params);
+		}
+	}
+	for (auto &child : node->getChildren()) {
+		recycleSetTextureParams(child, params);
+	}
+}
 
 //unsigned short ENEMY_STATE = WALKING;
 
@@ -149,6 +164,11 @@ bool HelloWorld::init()
 	//	this->setPhysics3DDebugCamera(camera);
 	//}
 
+	auto navMesh = NavMesh::create("NavMesh/all_tiles_tilecache.bin", "NavMesh/geomset.txt");
+	navMesh->setDebugDrawEnable(false);
+	setNavMesh(navMesh);
+
+
 	_player = M24::create();
 	_player->setPosition3D(Vec3(0.0f, 0.0f, 120.0f));
 	_player->setCameraMask((unsigned short)CameraFlag::USER1);
@@ -172,35 +192,17 @@ bool HelloWorld::init()
 	skybox->setScale(1000.0f);
 	this->addChild(skybox);
 
-	//Terrain::DetailMap r("models/terrain/dirt.jpg"), g("models/terrain/Grass2.jpg"), b("models/terrain/rock.png"), a("models/terrain/snow.png");
-
-	//Terrain::TerrainData data("models/terrain/terrain.png", "models/terrain/alphamap.png", r, g, b, a);
-	//data._mapHeight = 100.0;
-	//data._mapScale = 1.0f;
-
-	//auto terrain = Terrain::create(data, Terrain::CrackFixedType::SKIRT);
-	//terrain->setLODDistance(3.2f, 6.4f, 9.6f);
-	//terrain->setMaxDetailMapAmount(4);
-	//this->addChild(terrain);
-	//terrain->setCameraMask((unsigned short)CameraFlag::USER1);
-	//terrain->setDrawWire(false);
-	//terrain->setLightDir(-Vec3::UNIT_Y);
-
-	//std::vector<float> heidata = terrain->getHeightData();
-	//auto size = terrain->getTerrainSize();
-	//Physics3DColliderDes colliderDes;
-	//colliderDes.shape = Physics3DShape::createHeightfield(size.width, size.height, &heidata[0], 1.0f, -50.0f, 50.0f, true, false, true);
-	//_terrainCollider = Physics3DCollider::create(&colliderDes);
-	//auto component = Physics3DComponent::create(_terrainCollider);
-	//terrain->addComponent(component);
-	//component->syncNodeToPhysics();
-	//component->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::NONE);
+	Texture2D::TexParams texParams;
+	texParams.minFilter = GL_LINEAR_MIPMAP_LINEAR;
+	texParams.magFilter = GL_LINEAR;
+	texParams.wrapS = GL_REPEAT;
+	texParams.wrapT = GL_REPEAT;
 
 	float scale = 1.0f;
-	std::vector<Vec3> trianglesList = Bundle3D::getTrianglesList("models/terrain/terrain.c3b");
+	std::vector<Vec3> trianglesList = Bundle3D::getTrianglesList("models/terrain/terrain.obj");
 	for (auto& it : trianglesList) {
 		it *= scale;
-		it -= Vec3(0.0f, 0.0f, 4.0f);
+		//it -= Vec3(0.0f, 0.0f, 4.0f);
 	}
 
 	Physics3DRigidBodyDes rbDes;
@@ -208,25 +210,14 @@ bool HelloWorld::init()
 	rbDes.shape = Physics3DShape::createMesh(&trianglesList[0], (int)trianglesList.size() / 3);
 	_terrainCollider = Physics3DRigidBody::create(&rbDes);
 	auto component = Physics3DComponent::create(_terrainCollider);
-	auto terrain = Sprite3D::create("models/terrain/terrain.c3b");
+	auto terrain = Sprite3D::create("models/terrain/terrain.obj");
 	terrain->addComponent(component);
-	terrain->setRotation3D(Vec3(-90.0f, 0.0f, 0.0f));
-	terrain->setPosition3D(Vec3(0.0f, 2.0f, 0.0f));
+	//terrain->setRotation3D(Vec3(-90.0f, 0.0f, 0.0f));
+	//terrain->setPosition3D(Vec3(0.0f, 2.0f, 0.0f));
 	terrain->setScale(scale);
 	terrain->setCameraMask((unsigned short)CameraFlag::USER1);
+	recycleSetTextureParams(terrain, texParams);
 	this->addChild(terrain);
-
-	//Physics3DRigidBodyDes rbDes;
-	//rbDes.mass = 10.0f;
-	//rbDes.shape = Physics3DShape::createBox(Vec3(1.0f, 1.0f, 1.0f));
-	//auto box = PhysicsSprite3D::create("models/box.c3t", &rbDes);
-	//box->setTexture("models/crate6.png");
-	//box->setPosition3D(Vec3(0.0f, -45.0f, -20.0f));
-	//box->syncNodeToPhysics();
-	//box->setSyncFlag(Physics3DComponent::PhysicsSyncFlag::PHYSICS_TO_NODE);
-	//box->setCameraMask((unsigned short)CameraFlag::USER1);
-	//box->setScale(1.0f);
-	//this->addChild(box);
 
 
 	_player->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
@@ -254,8 +245,13 @@ bool HelloWorld::init()
 
 			auto enemy = static_cast<Tank *>(ci.objB->getUserData());
 
-			enemy->setHP(enemy->getHP() - HP_REDUCE_VALUE);
+			enemy->setHP(enemy->getHP() - HP_REDUCE_VALUE);			
 
+			for (auto &e : _enemyList) {
+				if (e.tank == enemy) {
+					e.pv->setCurrentProgress(e.pv->getCurrentProgress() - HP_REDUCE_VALUE);
+				}
+			}
 			//if (_enemy->getHP() <= HP_LOWER_LIMIT) {
 			//	if (!_enemy->getChildByTag(SMOKE_PS_TAG)) {
 			//		auto smoke = PUParticleSystem3D::create("effects/Particle3D/scripts/smoke.pu");
@@ -339,13 +335,13 @@ void HelloWorld::update(float delta)
 void HelloWorld::enemyAI(float delta)
 {
 	for (auto &enemy : _enemyList) {
-		Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
-		if (safeDis.length() < 50.0f) {
-			enemy.tank->getChildByTag(TARGET_TAG)->setVisible(false);
-		}
-		else {
-			enemy.tank->getChildByTag(TARGET_TAG)->setVisible(true);
-		}
+		//Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
+		//if (safeDis.length() < 50.0f) {
+		//	enemy.tank->getChildByTag(TARGET_TAG)->setVisible(false);
+		//}
+		//else {
+		//	enemy.tank->getChildByTag(TARGET_TAG)->setVisible(true);
+		//}
 
 		switch (enemy.tank->getState())
 		{
@@ -371,27 +367,35 @@ void HelloWorld::enemyWalking(TankState &enemy, float delta)
 {
 	if (enemy.tank->getHP() <= 0.0f) return;
 
-	enemy.moveTime -= delta;
-	if (enemy.moveTime <= 0.0f) {
-		enemy.moveTime = CCRANDOM_0_1() * 50.0f + 50.0f;
-		enemy.needChangeDir = true;
-	}
+	//enemy.moveTime -= delta;
+	//if (enemy.moveTime <= 0.0f) {
+	//	enemy.moveTime = CCRANDOM_0_1() * 50.0f + 50.0f;
+	//	enemy.needChangeDir = true;
+	//}
 
-	if (enemy.needChangeDir) {
-		enemy.randomAngle = 2.0;
-		enemy.needChangeDir = false;
-	}
+	//if (enemy.needChangeDir) {
+	//	enemy.randomAngle = 2.0;
+	//	enemy.needChangeDir = false;
+	//}
 
-	if (0.0f < abs(enemy.randomAngle)) {
-		enemy.tank->turn(enemy.randomAngle);
-		float latestAngle = enemy.randomAngle;
-		enemy.randomAngle -= delta * enemy.randomAngle;
-		if (latestAngle * enemy.randomAngle < 0.0)
-			enemy.randomAngle = 0.0f;
-	}
+	//if (0.0f < abs(enemy.randomAngle)) {
+	//	enemy.tank->turn(enemy.randomAngle);
+	//	float latestAngle = enemy.randomAngle;
+	//	enemy.randomAngle -= delta * enemy.randomAngle;
+	//	if (latestAngle * enemy.randomAngle < 0.0)
+	//		enemy.randomAngle = 0.0f;
+	//}
 
-	if (!enemy.tank->move(delta * 3.0f)) {
-		enemy.needChangeDir = true;
+	//if (!enemy.tank->move(delta * 3.0f)) {
+	//	enemy.needChangeDir = true;
+	//}
+	static float changeDirTime = 0.0f;
+	if (changeDirTime <= 0.0f) {
+		changeDirTime = CCRANDOM_0_1() * 7.0f + 3.0f;
+		enemy.tank->move(Vec3(CCRANDOM_0_1(), 0.0f, CCRANDOM_0_1()) * 130.0f);
+	}
+	else {
+		changeDirTime -= delta;
 	}
 
 	Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
@@ -408,20 +412,27 @@ void HelloWorld::enemyTracking(TankState &enemy, float delta)
 	Vec3 deltaDir = dis;
 	deltaDir.normalize();
 
-	Vec3 enemydir = enemy.tank->getRotationQuat() * -Vec3::UNIT_Z;
-	enemydir.normalize();
+	//Vec3 enemydir = enemy.tank->getRotationQuat() * -Vec3::UNIT_Z;
+	//enemydir.normalize();
 
-	float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
-	Vec3 up;
-	Vec3::cross(enemydir, deltaDir, &up);
-	if (up.y < 0.0)
-		theta = -theta;
+	//float theta = acos(clampf(enemydir.dot(deltaDir), 0.0f, 1.0f));
+	//Vec3 up;
+	//Vec3::cross(enemydir, deltaDir, &up);
+	//if (up.y < 0.0)
+	//	theta = -theta;
 
-	enemy.tank->turn(delta * CC_RADIANS_TO_DEGREES(theta));
-	enemy.tank->move(delta * 3.0f);
+	//enemy.tank->turn(delta * CC_RADIANS_TO_DEGREES(theta));
+	//enemy.tank->move(delta * 3.0f);
+
+	enemy.tank->move(_player->getPosition3D());
 
 	if (enemy.tank->shot(_player->getPosition3D(), 100.0f + CCRANDOM_0_1() * (15.0f * (100.0f / dis.length())))) {
 		SimpleAudioEngine::getInstance()->playEffect(FileUtils::getInstance()->fullPathForFilename("sound/enemy_shot.mp3").c_str());
+	}
+
+	Vec3 safeDis = _player->getPosition3D() - enemy.tank->getPosition3D();
+	if (100.0f < safeDis.length()) {
+		enemy.tank->setState(WALKING);
 	}
 }
 
@@ -480,17 +491,27 @@ void HelloWorld::generateEnemy(const cocos2d::Vec3 &pos, const Color3B &col, uns
 	//_enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
 	enemy->setPosition3D(pos);
 	enemy->setRotation3D(Vec3(0.0f, 180.0f, 0.0f));
-	enemy->setCameraMask((unsigned short)CameraFlag::USER1);
 	enemy->retain();
 	this->addChild(enemy);
 
 
-	auto sprite = BillBoard::create("target.png");
-	sprite->setCameraMask((unsigned short)CameraFlag::USER1);
-	sprite->setScale(0.05f);
-	sprite->setColor(col);
-	sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
-	enemy->addChild(sprite, 0, TARGET_TAG);
+	//auto sprite = BillBoard::create("target.png");
+	//sprite->setCameraMask((unsigned short)CameraFlag::USER1);
+	//sprite->setScale(0.05f);
+	//sprite->setColor(col);
+	//sprite->setPosition3D(Vec3(0.0f, 10.0f, 0.0f));
+	//enemy->addChild(sprite, 0, TARGET_TAG);
+
+	auto bb = BillBoard::create();
+	auto pv = ProgressView::create();
+	bb->setScale(0.1f);
+	bb->setPosition3D(Vec3(0.0f, 5.0f, 0.0f));
+	bb->setCameraMask((unsigned short)CameraFlag::USER1);
+	bb->addChild(pv);
+	pv->setForegroundTexture("blood.png");
+	pv->setTotalProgress(100.0f);
+	//pv->setForegroundColor(col);
+	enemy->addChild(bb);
 
 
 	enemy->setAttackCallback([=](const Physics3DCollisionInfo &ci) {
@@ -523,8 +544,9 @@ void HelloWorld::generateEnemy(const cocos2d::Vec3 &pos, const Color3B &col, uns
 		}
 	});
 
+	enemy->setCameraMask((unsigned short)CameraFlag::USER1);
 	enemy->setState(WALKING);
-	_enemyList.push_back({enemy, 0.0f, 0.0f, false});
+	_enemyList.push_back({enemy, pv, 0.0f, 0.0f, false});
 }
 
 void HelloWorld::removeEnemy(Tank *enemy)

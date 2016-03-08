@@ -8,8 +8,10 @@ USING_NS_CC;
 #define RENDER_ORDER_ID 100.0f
 
 OVRRenderer::OVRRenderer()
+#if GEAR_VR
 	: _ovr(nullptr)
 	, _frameIndex(1)
+#endif
 {
 }
 
@@ -20,78 +22,19 @@ OVRRenderer::~OVRRenderer()
 
 bool OVRRenderer::init(cocos2d::CameraFlag flag)
 {
-	//OVR::System::Init();
-	//// Initializes LibOVR, and the Rift
-	//ovrResult result = ovr_Initialize(nullptr);
-	//if (!OVR_SUCCESS(result)) {
-	//	CCLOG("Failed to initialize libOVR.");
-	//	return false;
-	//};
-
-	//ovrGraphicsLuid luid;
-	//result = ovr_Create(&_HMD, &luid);
-	//if (!OVR_SUCCESS(result)) {
-	//	CCLOG("Failed to create HMD.");
-	//	return false;
-	//}
-	//ovrHmdDesc hmdDesc = ovr_GetHmdDesc(_HMD);
-
-	//// Make eye render buffers
-	//for (int eye = 0; eye < 2; ++eye){
-	//	ovrSizei idealTextureSize = ovr_GetFovTextureSize(_HMD, ovrEyeType(eye), hmdDesc.DefaultEyeFov[eye], 1);
-	//	_eyeRenderTexture[eye] = new TextureBuffer(_HMD, true, true, idealTextureSize, 1, nullptr, 1);
-	//	_eyeDepthBuffer[eye] = new DepthBuffer(_eyeRenderTexture[eye]->GetSize(), 0);
-
-	//	if (!_eyeRenderTexture[eye]->TextureSet){
-	//		CCLOG("Failed to create texture.");
-	//		return false;
-	//	}
-	//}
-
-	//// Create mirror texture and an FBO used to copy mirror texture to back buffer
-	//result = ovr_CreateMirrorTextureGL(_HMD, GL_SRGB8_ALPHA8, Director::getInstance()->getWinSize().width, Director::getInstance()->getWinSize().height, reinterpret_cast<ovrTexture**>(&_mirrorTexture));
-	//if (!OVR_SUCCESS(result)){
-	//	CCLOG("Failed to create mirror texture.");
-	//	return false;
-	//}
-
-	//// Configure the mirror read buffer
-	//glGenFramebuffers(1, &_mirrorFBO);
-	//glBindFramebuffer(GL_READ_FRAMEBUFFER, _mirrorFBO);
-	//glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _mirrorTexture->OGL.TexId, 0);
-	//glFramebufferRenderbuffer(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, 0);
-	//glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-
-	//_eyeRenderDesc[0] = ovr_GetRenderDesc(_HMD, ovrEye_Left, hmdDesc.DefaultEyeFov[0]);
-	//_eyeRenderDesc[1] = ovr_GetRenderDesc(_HMD, ovrEye_Right, hmdDesc.DefaultEyeFov[1]);
-
-	//for (int eye = 0; eye < 2; ++eye) {
-	//	float fov = CC_RADIANS_TO_DEGREES(atan(hmdDesc.DefaultEyeFov[eye].UpTan) + atan(hmdDesc.DefaultEyeFov[eye].DownTan));
-	//	float aspectRadio = (hmdDesc.DefaultEyeFov[eye].LeftTan + hmdDesc.DefaultEyeFov[eye].RightTan) / (hmdDesc.DefaultEyeFov[eye].UpTan + hmdDesc.DefaultEyeFov[eye].DownTan);
-	//	_eyeCamera[eye] = Camera::createPerspective(fov, aspectRadio, 0.2f, 5000.0f);
-	//	_eyeCamera[eye]->setCameraFlag(flag);
-	//	//_eyeCamera[eye]->setDepth(eye + 1);
-	//	this->addChild(_eyeCamera[eye]);
-	//}
-
-	//this->setCameraMask((unsigned short)CameraFlag::USER1);
-	//_ld.Header.Type  = ovrLayerType_EyeFov;
-	//_ld.Header.Flags = ovrLayerFlag_TextureOriginAtBottomLeft;   // Because OpenGL.
-
-
+#if GEAR_VR
 	// Create an EGLContext and get the suggested FOV and suggested
 	// resolution to setup a projection matrix and eye texture swap chains.
-
-	_java.Vm = OVRHelper::java.Vm;
+	_java.Vm = OVRHelper::javaVM;
 	_java.Vm->AttachCurrentThread(&_java.Env, NULL);
-	_java.ActivityObject = OVRHelper::java.ActivityObject;
+	_java.ActivityObject = OVRHelper::activity;
 
 	const float suggestedEyeFovDegreesX = vrapi_GetSystemPropertyFloat(&_java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_X);
 	const float suggestedEyeFovDegreesY = vrapi_GetSystemPropertyFloat(&_java, VRAPI_SYS_PROP_SUGGESTED_EYE_FOV_DEGREES_Y);
 	const float halfWidth = VRAPI_ZNEAR * tanf(suggestedEyeFovDegreesX * (VRAPI_PI / 180.0f * 0.5f));
 	const float halfHeight = VRAPI_ZNEAR * tanf(suggestedEyeFovDegreesY * (VRAPI_PI / 180.0f * 0.5f));
 
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++)
+	for (int eye = 0; eye < EYE_NUM; eye++)
 	{
 		_eyeCamera[eye] = Camera::createPerspective(suggestedEyeFovDegreesY, halfWidth / halfHeight, VRAPI_ZNEAR, 5000.0f);
 		_eyeCamera[eye]->setCameraFlag(flag);
@@ -105,7 +48,7 @@ bool OVRRenderer::init(cocos2d::CameraFlag flag)
 
 	// Create the frame buffers.
 	CCLOG("OVRRenderer::ovrFramebuffer_Create");
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++)
+	for (int eye = 0; eye < EYE_NUM; eye++)
 	{
 		ovrFramebuffer_Clear(&_frameBuffer[eye]);
 		ovrFramebuffer_Create(&_frameBuffer[eye],
@@ -135,6 +78,8 @@ bool OVRRenderer::init(cocos2d::CameraFlag flag)
 	);
 	Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(foregroundToBackListener, -1);
 
+#endif
+
 	this->setCameraMask((unsigned short)flag);
 	update(0.0f);
 	scheduleUpdate();
@@ -155,7 +100,9 @@ OVRRenderer* OVRRenderer::create(cocos2d::CameraFlag flag)
 
 void OVRRenderer::draw(Renderer *renderer, const Mat4& transform, uint32_t flags)
 {
+#if GEAR_VR
 	if (!_ovr) return;
+#endif
 	if (Camera::getVisitingCamera() == _eyeCamera[0] || Camera::getVisitingCamera() == _eyeCamera[1]) {
 		_beginRenderCommand.init(-RENDER_ORDER_ID);
 		_beginRenderCommand.func = CC_CALLBACK_0(OVRRenderer::onBeginDraw, this);
@@ -169,23 +116,26 @@ void OVRRenderer::draw(Renderer *renderer, const Mat4& transform, uint32_t flags
 
 void OVRRenderer::onBeginDraw()
 {
+	int eye = Camera::getVisitingCamera() == _eyeCamera[0] ? 0 : 1;
+#if GEAR_VR
 	glEnable(GL_SCISSOR_TEST);
 	glDepthMask(true);
-	int eye = Camera::getVisitingCamera() == _eyeCamera[0] ? 0 : 1;
 	ovrFramebuffer * frameBuffer = &_frameBuffer[eye];
 	ovrFramebuffer_SetCurrent(frameBuffer);
 	glScissor(0, 0, frameBuffer->Width, frameBuffer->Height);
 	glViewport(0, 0, frameBuffer->Width, frameBuffer->Height);
 	glClearColor(0.125f, 0.0f, 0.125f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#endif
 }
 
 
 void OVRRenderer::onEndDraw()
 {
 	int eye = Camera::getVisitingCamera() == _eyeCamera[0] ? 0 : 1;
-	ovrFramebuffer * frameBuffer = &_frameBuffer[eye];
 
+#if GEAR_VR
+	ovrFramebuffer * frameBuffer = &_frameBuffer[eye];
 	// Explicitly clear the border texels to black because OpenGL-ES does not support GL_CLAMP_TO_BORDER.
 	{
 		// Clear to fully opaque black.
@@ -220,10 +170,13 @@ void OVRRenderer::onEndDraw()
 		ovrFramebuffer_SetNone();
 		vrapi_SubmitFrame(_ovr, &_frameParams);
 	}
+#endif
+
 }
 
 void OVRRenderer::update(float delta)
 {
+#if GEAR_VR
 	if (!_ovr) return;
 	_frameIndex++;
 	// Get the HMD pose, predicted for the middle of the time period during which
@@ -237,7 +190,7 @@ void OVRRenderer::update(float delta)
 	_tracking = vrapi_ApplyHeadModel(&headModelParms, &baseTracking);
 	const ovrMatrix4f centerEyeViewMatrix = vrapi_GetCenterEyeViewMatrix(&headModelParms, &_tracking, NULL);
 
-	for (int eye = 0; eye < VRAPI_FRAME_LAYER_EYE_MAX; eye++){
+	for (int eye = 0; eye < EYE_NUM; eye++){
 		const ovrMatrix4f eyeViewMatrix = vrapi_GetEyeViewMatrix(&headModelParms, &centerEyeViewMatrix, eye);
 		Mat4 viewMat;
 		viewMat.set((const GLfloat *)(ovrMatrix4f_Transpose(&eyeViewMatrix).M[0]));
@@ -260,6 +213,8 @@ void OVRRenderer::update(float delta)
 	_frameParams.MinimumVsyncs = 1;
 	_frameParams.PerformanceParms = vrapi_DefaultPerformanceParms();
 	_frameParams.Layers[VRAPI_FRAME_LAYER_TYPE_WORLD].Flags |= VRAPI_FRAME_LAYER_FLAG_CHROMATIC_ABERRATION_CORRECTION;
+
+#endif
 
 	CCLOG("OVRRenderer::update");
 }

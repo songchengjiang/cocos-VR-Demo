@@ -21,7 +21,8 @@ LOCAL_SRC_FILES := hellocpp/main.cpp \
                    ../../Classes/Tiger.cpp \
                    ../../Classes/OVRRenderer-android.cpp \
                    ../../Classes/OVRHelper-android.cpp \
-                   ../../Classes/PlayerController.cpp
+                   ../../Classes/PlayerController.cpp \
+                   ../../Classes/ProgressView.cpp
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../Classes \
                     $(OVRSDKMOBILEROOT)VrApi/Include \

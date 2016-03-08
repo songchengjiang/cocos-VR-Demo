@@ -62,6 +62,16 @@ bool Tank::init()
 	_pointLight->setLightFlag(LightFlag::LIGHT0);
 	_pointLight->setIntensity(0.0f);
 
+
+	NavMeshAgentParam param;
+	param.radius = 3.0f;
+	param.height = 4.0f;
+	param.maxSpeed = 3.0f;
+	_agent = NavMeshAgent::create(param);
+	_agent->setOrientationRefAxes(-Vec3::UNIT_Z);
+	this->addComponent(_agent);
+
+
 	scheduleUpdate();
 	return true;
 }
@@ -121,13 +131,25 @@ void Tank::rotateCannonGun(float angle)
 bool Tank::move(float force)
 {
 	Vec3 requestPos = Vec3(this->getPosition3D() + this->getRotationQuat() * Vec3(0.0f, 0.0f, -force));
-	if (requestPos.length() < MOVE_AREA_RADIUS) {
+	if (true/*requestPos.length() < MOVE_AREA_RADIUS*/) {
 		this->setPosition3D(requestPos);
 		changeLeftTrackTexture(force * 7.0f);
 		changeRightTrackTexture(force * 7.0f);
 		return true;
 	}
 	return false;
+}
+
+bool Tank::move(const Vec3 &target)
+{
+	_agent->move(target, [this](NavMeshAgent *agent, float totalTimeAfterMove) {
+		static float preTime = 0.0f;
+		changeLeftTrackTexture((totalTimeAfterMove - preTime) * 7.0f);
+		changeRightTrackTexture((totalTimeAfterMove - preTime) * 7.0f);
+		preTime = totalTimeAfterMove;
+	});
+
+	return true;
 }
 
 void Tank::turn(float torque)

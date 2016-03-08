@@ -4,6 +4,7 @@
 #include "cocos2d.h"
 #include "extensions/Particle3D/PU/CCPUParticleSystem3D.h"
 #include "physics3d/CCPhysics3D.h"
+#include "navmesh/CCNavMesh.h"
 
 class Tank : public cocos2d::Sprite3D
 {
@@ -12,6 +13,7 @@ public:
 	virtual bool init();
 	virtual void update(float delta) override;
 
+	bool move(const cocos2d::Vec3 &target);
 	bool move(float force);
 	void turn(float torque);
 	bool shot(float speed);
@@ -61,6 +63,8 @@ protected:
 	cocos2d::Physics3DObject::CollisionCallbackFunc _callBack;
 	cocos2d::PointLight *_pointLight;
 	cocos2d::Texture2D  *_trackTextures[4];
+
+	cocos2d::NavMeshAgent *_agent;
 };
 
 #endif // __HELLOWORLD_SCENE_H__

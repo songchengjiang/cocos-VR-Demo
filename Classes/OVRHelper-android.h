@@ -1,12 +1,11 @@
 #ifndef __OVR_HELPER_H__
 #define __OVR_HELPER_H__
 
+#define GEAR_VR 1
+#define DEEPOON 0
+
 #include "cocos2d.h"
 #include <jni.h>
-
-#include <VrApi.h>
-#include <VrApi_Helpers.h>
-#include <SystemActivities.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -30,17 +29,11 @@ static const char * GlFrameBufferStatusString(GLenum status)
 	}
 }
 
+#if GEAR_VR
 
-class OVRHelper
-{
-public:
-	OVRHelper();
-	~OVRHelper();
-
-	static ovrJava java;
-};
-
-
+#include <VrApi.h>
+#include <VrApi_Helpers.h>
+#include <SystemActivities.h>
 /*
 ================================================================================
 
@@ -187,5 +180,144 @@ static void ovrFramebuffer_Advance(ovrFramebuffer * frameBuffer)
 	frameBuffer->TextureSwapChainIndex = (frameBuffer->TextureSwapChainIndex + 1) % frameBuffer->TextureSwapChainLength;
 }
 
+#endif
+
+
+#if DEEPOON
+#include <deepoon_sdk_native.h>
+#include <deepoon_sdk_utils.h>
+
+typedef struct
+{
+	int						Width;
+	int						Height;
+	int						Multisamples;
+	GLuint                  texID;
+	GLuint				    DepthBuffer;
+	GLuint				    FrameBuffer;
+} dpnnFramebuffer;
+
+static void dpnnFramebuffer_Clear(dpnnFramebuffer * frameBuffer)
+{
+	frameBuffer->Width = 0;
+	frameBuffer->Height = 0;
+	frameBuffer->Multisamples = 0;
+	frameBuffer->texID = 0;
+	frameBuffer->DepthBuffer = 0;
+	frameBuffer->FrameBuffer = 0;
+}
+
+static bool dpnnFramebuffer_Create(dpnnFramebuffer * frameBuffer, const int width, const int height, const int multisamples)
+{
+	frameBuffer->Width = width;
+	frameBuffer->Height = height;
+	frameBuffer->Multisamples = multisamples;
+
+	PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC glRenderbufferStorageMultisampleEXT =
+		(PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)eglGetProcAddress("glRenderbufferStorageMultisampleEXT");
+	PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC glFramebufferTexture2DMultisampleEXT =
+		(PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)eglGetProcAddress("glFramebufferTexture2DMultisampleEXT");
+
+	// Create the color buffer texture.
+	GL(glGenTextures(1, &frameBuffer->texID));
+	GL(glBindTexture(GL_TEXTURE_2D, frameBuffer->texID));
+	GL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, NULL));
+	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+	GL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+	GL(glBindTexture(GL_TEXTURE_2D, 0));
+
+	if (multisamples > 1 && glRenderbufferStorageMultisampleEXT != NULL && glFramebufferTexture2DMultisampleEXT != NULL)
+	{
+		CCLOG("OVRHelper::Create multisampled buffers");
+		// Create multisampled depth buffer.
+		GL(glGenRenderbuffers(1, &frameBuffer->DepthBuffer));
+		GL(glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer->DepthBuffer));
+		GL(glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER, multisamples, GL_DEPTH_COMPONENT24, width, height));
+		GL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+
+		// Create the frame buffer.
+		GL(glGenFramebuffers(1, &frameBuffer->FrameBuffer));
+		GL(glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->FrameBuffer));
+		GL(glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBuffer->texID, 0, multisamples));
+		GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, frameBuffer->DepthBuffer));
+		GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER));
+		GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+		if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+		{
+			CCLOG("OVRHelper::Incomplete frame buffer object: %s", GlFrameBufferStatusString(renderFramebufferStatus));
+			return false;
+		}
+	}
+	else
+	{
+		CCLOG("OVRHelper::Create buffers");
+		// Create depth buffer.
+		GL(glGenRenderbuffers(1, &frameBuffer->DepthBuffer));
+		GL(glBindRenderbuffer(GL_RENDERBUFFER, frameBuffer->DepthBuffer));
+		GL(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height));
+		GL(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+
+		// Create the frame buffer.
+		GL(glGenFramebuffers(1, &frameBuffer->FrameBuffer));
+		GL(glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->FrameBuffer));
+		GL(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, frameBuffer->DepthBuffer));
+		GL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, frameBuffer->texID, 0));
+		GL(GLenum renderFramebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER));
+		GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+		if (renderFramebufferStatus != GL_FRAMEBUFFER_COMPLETE)
+		{
+			CCLOG("OVRHelper::Incomplete frame buffer object: %s", GlFrameBufferStatusString(renderFramebufferStatus));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static void dpnnFramebuffer_Destroy(dpnnFramebuffer * frameBuffer)
+{
+	GL(glDeleteFramebuffers(1, &frameBuffer->FrameBuffer));
+	GL(glDeleteRenderbuffers(1, &frameBuffer->DepthBuffer));
+	dpnnFramebuffer_Clear(frameBuffer);
+}
+
+static void ovrFramebuffer_SetCurrent(dpnnFramebuffer * frameBuffer)
+{
+	GL(glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer->FrameBuffer));
+}
+
+static void ovrFramebuffer_SetNone()
+{
+	GL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+static void ovrFramebuffer_Resolve(dpnnFramebuffer * frameBuffer)
+{
+	// Discard the depth buffer, so the tiler won't need to write it back out to memory.
+	const GLenum depthAttachment[1] = { GL_DEPTH_ATTACHMENT };
+	glInvalidateFramebuffer(GL_FRAMEBUFFER, 1, depthAttachment);
+
+	// Flush this frame worth of commands.
+	glFlush();
+}
+
+#endif
+
+class OVRHelper
+{
+public:
+	OVRHelper();
+	~OVRHelper();
+
+	static JavaVM *javaVM;
+	static jobject activity;
+
+#if DEEPOON
+	static dpnnInstance dpInstance;
+#endif
+};
 
 #endif
