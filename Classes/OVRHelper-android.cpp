@@ -2,9 +2,6 @@
 
 JavaVM * OVRHelper::javaVM = nullptr;
 jobject OVRHelper::activity = 0;
-#if DEEPOON
-dpnnInstance OVRHelper::dpInstance = 0;
-#endif
 
 OVRHelper::OVRHelper()
 {
@@ -39,8 +36,5 @@ void cocos_android_app_onCreate(JavaVM *vm, JNIEnv* env, jobject activity) {
 	}
 #endif
 
-#if DEEPOON
-	OVRHelper::dpInstance = dpnnInit(1, DPNN_UM_DEFAULT, NULL, DPNN_DEVICE_GLES2, (void*)OVRHelper::activity);
-#endif
 	CCLOG("cocos_android_app_onCreate End");
 }

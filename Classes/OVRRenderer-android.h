@@ -46,6 +46,11 @@ private:
 	ovrFrameParms   _frameParams;
 #endif
 
+#if DEEPOON
+	dpnnFramebuffer _frameBuffer[EYE_NUM];
+	dpnnInstance    _instance;
+#endif
+
 
 	cocos2d::CustomCommand _beginRenderCommand;
 	cocos2d::CustomCommand _endRenderCommand;

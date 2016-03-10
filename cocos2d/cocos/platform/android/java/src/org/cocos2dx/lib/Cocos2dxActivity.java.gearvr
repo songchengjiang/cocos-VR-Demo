@@ -287,7 +287,6 @@ public abstract class Cocos2dxActivity extends Activity implements Cocos2dxHelpe
             Bundle bundle = ai.metaData;
             String libName = bundle.getString("android.app.lib_name");
             System.loadLibrary(libName);
-			System.loadLibrary("deepoon_sdk");
         } catch (Exception e) {
             e.printStackTrace();
         }
